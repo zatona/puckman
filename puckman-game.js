@@ -425,7 +425,7 @@ function View(model,controller){
 	this.model=model;
 	this.model.addView(this);
 	this.controller=controller;
-	this.scale=2;
+	this.scale=1;
 	this.setCanvas;
 	this.setContext;
 	this.actorCanvas;
@@ -488,25 +488,34 @@ function View(model,controller){
 		for(var iy=0;iy<this.model.maze.ymax;iy++){
 			for(var ix=0;ix<this.model.maze.xmax;ix++){
 				var elem=this.model.maze.getElem(ix,iy);
-				if(elem instanceof Block){
+				
+				function drawRoundRec(context,x,y,width,height,radius){
+					context.moveTo(x + radius, y);
+					context.lineTo(x + width - radius, y);
+					context.quadraticCurveTo(x + width, y, x + width, y + radius);
+					context.lineTo(x + width, y + height - radius);
+					context.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+					context.lineTo(x + radius, y + height);
+					context.quadraticCurveTo(x, y + height, x, y + height - radius);
+					context.lineTo(x, y + radius);
+					context.quadraticCurveTo(x, y, x + radius, y);				
+				}
+				
+				if(elem instanceof Path){
 					this.setContext.beginPath();
-					this.setContext.rect(elem.x*TILE_SIZE*this.scale, elem.y*TILE_SIZE*this.scale, TILE_SIZE*this.scale, TILE_SIZE*this.scale);
-					this.setContext.fillStyle = "#444444";
-					this.setContext.fill();
-					this.setContext.closePath();			
-				}else if(elem instanceof Door){
-					this.setContext.beginPath();
-					this.setContext.rect(elem.x*TILE_SIZE*this.scale, elem.y*TILE_SIZE*this.scale, TILE_SIZE*this.scale, TILE_SIZE*this.scale);
-					this.setContext.fillStyle = "#666666";
-					this.setContext.fill();
-					this.setContext.closePath();								
-				}else if(elem instanceof Path){
-					this.setContext.beginPath();
-					this.setContext.rect(elem.x*TILE_SIZE*this.scale, elem.y*TILE_SIZE*this.scale, TILE_SIZE*this.scale, TILE_SIZE*this.scale);
+					drawRoundRec(this.setContext,(elem.x*TILE_SIZE-TILE_SIZE/3)*this.scale,(elem.y*TILE_SIZE-TILE_SIZE/3)*this.scale,(TILE_SIZE*5/3)*this.scale,(TILE_SIZE*5/3)*this.scale,TILE_SIZE/2*this.scale);
 					this.setContext.fillStyle = "#222222";
 					this.setContext.fill();
-					this.setContext.closePath();								
+					this.setContext.closePath();							
+				}else if(elem instanceof Door){
+					this.setContext.beginPath();
+					drawRoundRec(this.setContext,(elem.x*TILE_SIZE-TILE_SIZE/3)*this.scale,(elem.y*TILE_SIZE)*this.scale,(TILE_SIZE*5/3)*this.scale,(TILE_SIZE)*this.scale,TILE_SIZE/2*this.scale);
+					this.setContext.fillStyle = "#666666";
+					this.setContext.fill();
+					this.setContext.closePath();														
 				}
+
+				
 			}
 		}
 	};
