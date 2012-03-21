@@ -425,7 +425,7 @@ function View(model,controller){
 	this.model=model;
 	this.model.addView(this);
 	this.controller=controller;
-	this.scale=1;
+	this.scale=3;
 	this.setCanvas;
 	this.setContext;
 	this.actorCanvas;
@@ -503,7 +503,7 @@ function View(model,controller){
 				
 				if(elem instanceof Path){
 					this.setContext.beginPath();
-					drawRoundRec(this.setContext,(elem.x*TILE_SIZE-TILE_SIZE/3)*this.scale,(elem.y*TILE_SIZE-TILE_SIZE/3)*this.scale,(TILE_SIZE*5/3)*this.scale,(TILE_SIZE*5/3)*this.scale,TILE_SIZE/2*this.scale);
+					drawRoundRec(this.setContext,(elem.x*TILE_SIZE-TILE_SIZE/3)*this.scale,(elem.y*TILE_SIZE-TILE_SIZE/3)*this.scale,(TILE_SIZE*5/3)*this.scale,(TILE_SIZE*5/3)*this.scale,TILE_SIZE/3*this.scale);
 					this.setContext.fillStyle = "#222222";
 					this.setContext.fill();
 					this.setContext.closePath();							
@@ -729,18 +729,18 @@ function View(model,controller){
 					//HEAD
 					spriteContext.beginPath();
 					spriteContext.fillStyle = ghostColor;
-					spriteContext.arc(x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2, y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2, ghostradius, (Math.PI / 180) * (180), 0, false);
-					spriteContext.lineTo( x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2+ghostradius,y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale*3/4);
-					spriteContext.lineTo( x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2-ghostradius,y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale*3/4);
-					spriteContext.lineTo( x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2-ghostradius,y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2);
-					spriteContext.moveTo(x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2-ghostradius, y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale*3/4);
+					spriteContext.arc(    (x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale,(y*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale, ghostradius, (Math.PI / 180) * (180), 0, false);
+					spriteContext.lineTo( (x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale +ghostradius,(y*ACTOR_SIZE+ACTOR_SIZE*3/4)*this.scale);
+					spriteContext.lineTo( (x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale -ghostradius,(y*ACTOR_SIZE+ACTOR_SIZE*3/4)*this.scale);
+					spriteContext.lineTo( (x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale -ghostradius,(y*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale);
+					spriteContext.moveTo( (x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale -ghostradius,(y*ACTOR_SIZE+ACTOR_SIZE*3/4)*this.scale);
 					spriteContext.fill();
 					spriteContext.closePath();
 					
 					spriteContext.beginPath();
 					spriteContext.fillStyle = "#FFFFFF";
-					spriteContext.arc(x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2-ghostradius/3, y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale*1/3, ghostradius/4, 0, (Math.PI / 180) * (360), false);
-					spriteContext.arc(x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2+ghostradius/3, y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale*1/3, ghostradius/4, 0, (Math.PI / 180) * (360), false);
+					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/4, 0, (Math.PI / 180) * (360), false);
+					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/4, 0, (Math.PI / 180) * (360), false);
 					spriteContext.fill();
 					spriteContext.closePath();
 					
@@ -749,24 +749,24 @@ function View(model,controller){
 					spriteContext.fillStyle = "#000000";
 					switch(directions[di]){
 						case NONE:
-							spriteContext.arc(x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2-ghostradius/3, y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale*1/3, ghostradius/12, 0, (Math.PI / 180) * (360), false);
-							spriteContext.arc(x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2+ghostradius/3, y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale*1/3, ghostradius/12, 0, (Math.PI / 180) * (360), false);
+							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/8, 0, (Math.PI / 180) * (360), false);
+							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/8, 0, (Math.PI / 180) * (360), false);
 							break;
 						case LEFT:
-							spriteContext.arc(x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2-ghostradius/3-ghostradius/8, y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale*1/3, ghostradius/12, 0, (Math.PI / 180) * (360), false);
-							spriteContext.arc(x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2+ghostradius/3-ghostradius/8, y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale*1/3, ghostradius/12, 0, (Math.PI / 180) * (360), false);
+							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3-ghostradius/8, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/8, 0, (Math.PI / 180) * (360), false);
+							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3-ghostradius/8, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/8, 0, (Math.PI / 180) * (360), false);
 							break;
 						case RIGHT:
-							spriteContext.arc(x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2-ghostradius/3+ghostradius/8, y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale*1/3, ghostradius/12, 0, (Math.PI / 180) * (360), false);
-							spriteContext.arc(x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2+ghostradius/3+ghostradius/8, y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale*1/3, ghostradius/12, 0, (Math.PI / 180) * (360), false);
+							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3+ghostradius/8, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/8, 0, (Math.PI / 180) * (360), false);
+							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3+ghostradius/8, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/8, 0, (Math.PI / 180) * (360), false);
 							break;
 						case UP:
-							spriteContext.arc(x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2-ghostradius/3, y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale*1/3-ghostradius/8, ghostradius/12, 0, (Math.PI / 180) * (360), false);
-							spriteContext.arc(x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2+ghostradius/3, y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale*1/3-ghostradius/8, ghostradius/12, 0, (Math.PI / 180) * (360), false);
+							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale-ghostradius/8, ghostradius/8, 0, (Math.PI / 180) * (360), false);
+							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale-ghostradius/8, ghostradius/8, 0, (Math.PI / 180) * (360), false);
 							break;
 						case DOWN:
-							spriteContext.arc(x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2-ghostradius/3, y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale*1/3+ghostradius/8, ghostradius/12, 0, (Math.PI / 180) * (360), false);
-							spriteContext.arc(x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2+ghostradius/3, y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale*1/3+ghostradius/8, ghostradius/12, 0, (Math.PI / 180) * (360), false);
+							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale+ghostradius/8, ghostradius/8, 0, (Math.PI / 180) * (360), false);
+							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale+ghostradius/8, ghostradius/8, 0, (Math.PI / 180) * (360), false);
 							break;
 					}	
 					spriteContext.fill();
@@ -817,11 +817,11 @@ function View(model,controller){
 			//HEAD
 			spriteContext.beginPath();
 			spriteContext.fillStyle = ghostColor;
-			spriteContext.arc(x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2, y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2, ghostradius, (Math.PI / 180) * (180), 0, false);
-			spriteContext.lineTo( x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2+ghostradius,y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale*3/4);
-			spriteContext.lineTo( x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2-ghostradius,y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale*3/4);
-			spriteContext.lineTo( x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2-ghostradius,y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2);
-			spriteContext.moveTo(x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2-ghostradius, y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale*3/4);
+			spriteContext.arc(    (x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale, (y*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale, ghostradius, (Math.PI / 180) * (180), 0, false);
+			spriteContext.lineTo( (x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale +ghostradius,(y*ACTOR_SIZE+ACTOR_SIZE*3/4)*this.scale);
+			spriteContext.lineTo( (x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale -ghostradius,(y*ACTOR_SIZE+ACTOR_SIZE*3/4)*this.scale);
+			spriteContext.lineTo( (x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale -ghostradius,(y*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale);
+			spriteContext.moveTo( (x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale -ghostradius,(y*ACTOR_SIZE+ACTOR_SIZE*3/4)*this.scale);
 			spriteContext.fill();
 			spriteContext.closePath();
 			
@@ -829,47 +829,53 @@ function View(model,controller){
 			//EYES
 			spriteContext.beginPath();
 			spriteContext.fillStyle = "#FFFFFF";
-			spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2-ghostradius/5)*this.scale, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/4, 0, (Math.PI / 180) * (360), false);
-			spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2+ghostradius/5)*this.scale, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/4, 0, (Math.PI / 180) * (360), false);
+			spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/4, 0, (Math.PI / 180) * (360), false);
+			spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/4, 0, (Math.PI / 180) * (360), false);
 			spriteContext.fill();
 			spriteContext.closePath();
 			spriteContext.beginPath();
 			spriteContext.fillStyle = "#000000";
-			spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2-ghostradius/5)*this.scale, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/8, 0, (Math.PI / 180) * (360), false);
-			spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2+ghostradius/5)*this.scale, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/8, 0, (Math.PI / 180) * (360), false);
+			switch(ghostSpriteAnims[ai]){
+				case ANIM1:
+					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/8, 0, (Math.PI / 180) * (360), false);
+					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/8, 0, (Math.PI / 180) * (360), false);
+					break;
+				case ANIM2:
+					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/12, 0, (Math.PI / 180) * (360), false);
+					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/12, 0, (Math.PI / 180) * (360), false);
+					break;
+			}			
 			spriteContext.fill();
 			spriteContext.closePath();
 			
 			//MOUTH
+			switch(ghostSpriteAnims[ai]){
+				case ANIM1:
+					var begMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/14;
+					var endMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/14;
+					var mouthWidthIn=ghostradius/3;
+					var mouthWidthLips=ghostradius/1.5;
+					break;
+				case ANIM2:
+					var begMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/4;
+					var endMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/4;
+					var mouthWidthIn=ghostradius/2.5;
+					var mouthWidthLips=ghostradius/1.5;
+					break;
+			}			
 			spriteContext.beginPath();
 			spriteContext.strokeStyle = "#FFFFFF";
-			spriteContext.lineWidth = ghostradius/1.5;
-			spriteContext.moveTo((x*ACTOR_SIZE+ACTOR_SIZE/2-ghostradius/6)*this.scale, (y*ACTOR_SIZE+ACTOR_SIZE*1.9/3)*this.scale);
-			spriteContext.lineTo((x*ACTOR_SIZE+ACTOR_SIZE/2+ghostradius/6)*this.scale, (y*ACTOR_SIZE+ACTOR_SIZE*1.9/3)*this.scale);
+			spriteContext.lineWidth = mouthWidthLips;
+			spriteContext.moveTo(begMouthx, (y*ACTOR_SIZE+ACTOR_SIZE*1.9/3)*this.scale);
+			spriteContext.lineTo(endMouthx, (y*ACTOR_SIZE+ACTOR_SIZE*1.9/3)*this.scale);
 			spriteContext.lineCap = "round";
 			spriteContext.stroke();
 			spriteContext.closePath();
 			spriteContext.beginPath();
-			spriteContext.strokeStyle = "#000000";
-			spriteContext.lineWidth = 0.8;
-//			spriteContext.moveTo((x*ACTOR_SIZE+ACTOR_SIZE/2-ghostradius/6)*this.scale, (y*ACTOR_SIZE+ACTOR_SIZE*1.6/3)*this.scale);
-//			spriteContext.lineTo((x*ACTOR_SIZE+ACTOR_SIZE/2-ghostradius/6)*this.scale, (y*ACTOR_SIZE+ACTOR_SIZE*2/3)*this.scale);
-//			spriteContext.moveTo((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale, (y*ACTOR_SIZE+ACTOR_SIZE*1.6/3)*this.scale);
-//			spriteContext.lineTo((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale, (y*ACTOR_SIZE+ACTOR_SIZE*2/3)*this.scale);
-//			spriteContext.moveTo((x*ACTOR_SIZE+ACTOR_SIZE/2+ghostradius/6)*this.scale, (y*ACTOR_SIZE+ACTOR_SIZE*1.6/3)*this.scale);
-//			spriteContext.lineTo((x*ACTOR_SIZE+ACTOR_SIZE/2+ghostradius/6)*this.scale, (y*ACTOR_SIZE+ACTOR_SIZE*2/3)*this.scale);
-//			spriteContext.moveTo((x*ACTOR_SIZE+ACTOR_SIZE/2-ghostradius/3)*this.scale, (y*ACTOR_SIZE+ACTOR_SIZE*1.8/3)*this.scale);
-//			spriteContext.lineTo((x*ACTOR_SIZE+ACTOR_SIZE/2+ghostradius/3)*this.scale, (y*ACTOR_SIZE+ACTOR_SIZE*1.8/3)*this.scale);
-			spriteContext.lineCap = "round";
-			spriteContext.stroke();			
-			spriteContext.fill();
-			spriteContext.closePath();
-
-			spriteContext.beginPath();
-			spriteContext.strokeStyle = "#aaaaaa";
-			spriteContext.lineWidth = ghostradius/3;
-			spriteContext.moveTo((x*ACTOR_SIZE+ACTOR_SIZE/2-ghostradius/6)*this.scale, (y*ACTOR_SIZE+ACTOR_SIZE*1.9/3)*this.scale);
-			spriteContext.lineTo((x*ACTOR_SIZE+ACTOR_SIZE/2+ghostradius/6)*this.scale, (y*ACTOR_SIZE+ACTOR_SIZE*1.9/3)*this.scale);
+			spriteContext.strokeStyle = "#aa0000";
+			spriteContext.lineWidth = mouthWidthIn;
+			spriteContext.moveTo(begMouthx, (y*ACTOR_SIZE+ACTOR_SIZE*1.9/3)*this.scale);
+			spriteContext.lineTo(endMouthx, (y*ACTOR_SIZE+ACTOR_SIZE*1.9/3)*this.scale);
 			spriteContext.lineCap = "round";
 			spriteContext.stroke();
 			spriteContext.closePath();
@@ -917,26 +923,33 @@ function View(model,controller){
 			//HEAD
 			spriteContext.beginPath();
 			spriteContext.fillStyle = ghostColor;
-			spriteContext.arc(x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2, y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2, ghostradius, (Math.PI / 180) * (180), 0, false);
-			spriteContext.lineTo( x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2+ghostradius,y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale*3/4);
-			spriteContext.lineTo( x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2-ghostradius,y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale*3/4);
-			spriteContext.lineTo( x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2-ghostradius,y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2);
-			spriteContext.moveTo(x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2-ghostradius, y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale*3/4);
+			spriteContext.arc(    (x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale, (y*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale, ghostradius, (Math.PI / 180) * (180), 0, false);
+			spriteContext.lineTo( (x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale +ghostradius,(y*ACTOR_SIZE+ACTOR_SIZE*3/4)*this.scale);
+			spriteContext.lineTo( (x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale -ghostradius,(y*ACTOR_SIZE+ACTOR_SIZE*3/4)*this.scale);
+			spriteContext.lineTo( (x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale -ghostradius,(y*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale);
+			spriteContext.moveTo( (x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale -ghostradius,(y*ACTOR_SIZE+ACTOR_SIZE*3/4)*this.scale);
 			spriteContext.fill();
-			spriteContext.closePath();
-			
+			spriteContext.closePath();			
 			
 			//EYES
 			spriteContext.beginPath();
 			spriteContext.fillStyle = "#FFFFFF";
-			spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2-ghostradius/5)*this.scale, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/4, 0, (Math.PI / 180) * (360), false);
-			spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2+ghostradius/5)*this.scale, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/4, 0, (Math.PI / 180) * (360), false);
+			spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/5, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/3, 0, (Math.PI / 180) * (360), false);
+			spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/5, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/3, 0, (Math.PI / 180) * (360), false);
 			spriteContext.fill();
 			spriteContext.closePath();
 			spriteContext.beginPath();
 			spriteContext.fillStyle = "#000000";
-			spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2-ghostradius/5)*this.scale, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/12, 0, (Math.PI / 180) * (360), false);
-			spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2+ghostradius/5)*this.scale, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/12, 0, (Math.PI / 180) * (360), false);
+			switch(ghostSpriteAnims[ai]){
+				case ANIM1:
+					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/5, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/8, 0, (Math.PI / 180) * (360), false);
+					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/5, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/8, 0, (Math.PI / 180) * (360), false);
+					break;
+				case ANIM2:
+					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/5, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/12, 0, (Math.PI / 180) * (360), false);
+					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/5, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/12, 0, (Math.PI / 180) * (360), false);
+					break;
+			}			
 			spriteContext.fill();
 			spriteContext.closePath();
 			
