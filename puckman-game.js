@@ -1,9 +1,10 @@
 /**
  * Puck-man (2012)
  * by zatona@gmail.com(Olivier VALLEE)
+ * follow : https://github.com/zatona/puckman
  * 
  * An attempt to reproduce in Html5 Canvas/js
- * Pac-man video-game
+ * original Pac-man video-game
  * by Toru Iwatani/Shigeo Funaki/Toshio Kai/Namco
  */
 
@@ -149,6 +150,7 @@ function Ghost(position,name){
 	this.target=new Target(0,0,NONE);
 	this.setTarget=function(target){this.target=target;};
 	this.status=SCATTER;
+	this.setStatus=function(status){this.status=status;this.direction=OppositeDirections[this.direction]};
 };
 function Blinky(position){
 	Ghost.call(this,position,BLINKY);
@@ -157,14 +159,19 @@ function Blinky(position){
 
 function Pinky(position){
 	Ghost.call(this,position,PINKY);
+	this.direction=UP;
 };
 
 function Inky(position){
 	Ghost.call(this,position,INKY);
+//	this.direction=RIGHT;
+	this.direction=UP;
 };
 
 function Clyde(position){
 	Ghost.call(this,position,CLYDE);
+//	this.direction=LEFT;
+	this.direction=UP;	
 };
 
 function Puckman(position){
@@ -234,12 +241,12 @@ function Model(){
 					}else if(modelTextChar=="b"){
 						this.ghosts[BLINKY]=new Blinky(path);
 						this.maze.putTarget(new Target(path,PEN_EXIT));
-						this.maze.putTarget(new Target(path,BLINKY_START));
 					}else if(modelTextChar=="p"){
 						this.ghosts[PINKY]=new Pinky(path);
 						this.maze.putTarget(new Target(path,PINKY_START));
 					}else if(modelTextChar=="i"){
 						this.ghosts[INKY]=new Inky(path);
+						this.maze.putTarget(new Target(path,INKY_START));
 						this.maze.putTarget(new Target(path,BLINKY_START));
 					}else if(modelTextChar=="c"){
 						this.ghosts[CLYDE]=new Clyde(path);
@@ -317,7 +324,7 @@ function Model(){
 			if(ball.isSuper){
 				for(var gi in this.ghosts){
 					var ghost=this.ghosts[gi];
-					ghost.status=FRIGHTENED;
+					ghost.setStatus(FRIGHTENED);
 					ghost.speed=0.5;
 				}				
 			}
@@ -383,6 +390,7 @@ function Model(){
 			}
 		}else{
 			if(path.connections[ghost.direction]==undefined){
+				direction=OppositeDirections[direction];
 				for(gd in ghostDirections){
 					if(!(ghost.direction==OppositeDirections[ghostDirections[gd]])
 						&& path.connections[ghostDirections[gd]]!=undefined){
@@ -411,7 +419,8 @@ function Model(){
 		if(ghost.status!=FRIGHTENED && ghost.x==this.puckman.x && ghost.y==this.puckman.y){
 			this.puckman.isEaten=true;
 			ghost.setTarget(this.maze.getTarget(ghostTargets[ghost.name]));
-			ghost.status=SCATTER;							
+			ghost.setStatus(SCATTER);
+			console.log(ghost.name+"["+ghost.status+"]"+"->EAT PUCKMAN");
 		}
 		
 		/** Target Reached */
@@ -421,11 +430,15 @@ function Model(){
 			
 			if(ghost.target.name==PUCKMAN){
 			}else if(ghost.target.name==PEN_EXIT){
-				ghost.target=this.maze.getTarget(ghostPens[ghost.name]);
+				if(ghost.isEaten){
+					ghost.target=this.maze.getTarget(ghostPens[ghost.name]);
+				}else{
+					ghost.setTarget(this.maze.getTarget(ghostTargets[ghost.name]));					
+				}
 			}else if(ghost.target.name==ghostPens[ghost.name]){
 				ghost.isEaten=false;
-				ghost.setTarget(this.maze.getTarget(ghostTargets[ghost.name]));
-				ghost.status=SCATTER;				
+				ghost.setStatus(SCATTER);				
+				ghost.target=this.maze.getTarget(ghostPens[ghost.name]);
 			}
 
 			console.log(ghost.name+"->NEW TARGET["+ghost.target.x+","+ghost.target.y+","+ghost.target.name+"]");	
@@ -519,7 +532,7 @@ function View(model,controller){
 				
 				if(elem instanceof Path){
 					this.setContext.beginPath();
-					drawRoundRec(this.setContext,(elem.x*TILE_SIZE-TILE_SIZE/3)*this.scale,(elem.y*TILE_SIZE-TILE_SIZE/3)*this.scale,(TILE_SIZE*5/3)*this.scale,(TILE_SIZE*5/3)*this.scale,TILE_SIZE/3*this.scale);
+					drawRoundRec(this.setContext,(elem.x*TILE_SIZE-TILE_SIZE/3)*this.scale,(elem.y*TILE_SIZE-TILE_SIZE/3)*this.scale,(TILE_SIZE*7/4)*this.scale,(TILE_SIZE*7/4)*this.scale,TILE_SIZE/3*this.scale);
 					this.setContext.fillStyle = "#222222";
 					this.setContext.fill();
 					this.setContext.closePath();							
@@ -734,7 +747,7 @@ function View(model,controller){
 		x=0;
 		//GHOST
 		//var ghostNames=new Array(BLINKY,PINKY,INKY,CLYDE);
-		var ghostColors={BLINKY:"255,128,128",PINKY:"255,128,255",INKY:"128,255,255",CLYDE:"255,128,64"};
+		var ghostColors={BLINKY:"255,64,64",PINKY:"255,128,255",INKY:"128,255,255",CLYDE:"255,128,64"};
 		var ghostradius = TILE_SIZE*this.scale*0.8;
 		var ghostSpriteAnims=new Array(ANIM1,ANIM2);
 		for(var gi in ghostNames){
