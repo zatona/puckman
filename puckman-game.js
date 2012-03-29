@@ -408,17 +408,18 @@ function Model(){
 			}
 		}
 		
+		if(ghost.status!=FRIGHTENED && ghost.x==this.puckman.x && ghost.y==this.puckman.y){
+			this.puckman.isEaten=true;
+			ghost.setTarget(this.maze.getTarget(ghostTargets[ghost.name]));
+			ghost.status=SCATTER;							
+		}
+		
 		/** Target Reached */
 		if(ghost.x==ghost.target.x && ghost.y==ghost.target.y){
 			
 			console.log(ghost.name+"["+ghost.status+"]"+"->TARGET REACHED["+ghost.target.x+","+ghost.target.y+","+ghost.target.name+"]");
 			
 			if(ghost.target.name==PUCKMAN){
-				if(ghost.status!=FRIGHTENED){
-					this.puckman.isEaten=true;
-					ghost.setTarget(this.maze.getTarget(ghostTargets[ghost.name]));
-					ghost.status=SCATTER;				
-				}
 			}else if(ghost.target.name==PEN_EXIT){
 				ghost.target=this.maze.getTarget(ghostPens[ghost.name]);
 			}else if(ghost.target.name==ghostPens[ghost.name]){
@@ -440,7 +441,7 @@ function View(model,controller){
 	this.model=model;
 	this.model.addView(this);
 	this.controller=controller;
-	this.scale=1;
+	this.scale=2;
 	this.setCanvas;
 	this.setContext;
 	this.actorCanvas;
