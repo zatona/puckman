@@ -44,9 +44,9 @@ function Maze(xmax,ymax){
 	this.xmax=xmax;
 	this.ymax=ymax;
 	this.elems;
-	this.marks;
+	this.targets;
 
-	this.marks=new Array();
+	this.targets=new Array();
 
 	this.elems=new Array();
 	for(var iy=0;iy<this.ymax;iy++){this.elems[iy]=new Array();}
@@ -63,10 +63,10 @@ function Maze(xmax,ymax){
 		return this.getElem(x,y);
 	};
 
-	this.putMark=function(position,label){
-		this.marks[label]=this.getElem(position.x,position.y);
+	this.putTarget=function(target){
+		this.targets[target.name]=target;
 	};
-	this.getMark=function(label){return this.marks[label];};
+	this.getTarget=function(name){return this.targets[name];};
 };
 
 function Offset(x,y){
@@ -126,10 +126,14 @@ function Ball(position,isSuper){
 	Food.call(this,isSuper);
 };
 
-function Actor(position,name){
+function Target(position,name){
 	Position.call(this, position.x, position.y);
-	Food.call(false);
 	this.name=name;
+}
+
+function Actor(position,name){
+	Target.call(this,position,name);
+	Food.call(false);
 	this.offset=new Offset(TILE_SIZE,TILE_SIZE/2);
 	this.direction=NONE;
 	this.moveTo=function(position){
@@ -142,7 +146,7 @@ function Actor(position,name){
 function Ghost(position,name){
 	Actor.call(this,position,name);
 	Food.call(this,false);
-	this.target=new Position(0,0);
+	this.target=new Target(0,0,NONE);
 	this.setTarget=function(target){this.target=target;};
 	this.status=SCATTER;
 };
@@ -226,28 +230,28 @@ function Model(){
 						this.balls[path.x+":"+path.y]=new Ball(path,true);
 					}else if(modelTextChar=="m"){
 						this.puckman=new Puckman(path);
-						this.maze.putMark(path,PUCKMAN_START);
+						this.maze.putTarget(new Target(path,PUCKMAN_START));
 					}else if(modelTextChar=="b"){
 						this.ghosts[BLINKY]=new Blinky(path);
-						this.maze.putMark(path,PEN_EXIT);
-						this.maze.putMark(path,BLINKY_START);
+						this.maze.putTarget(new Target(path,PEN_EXIT));
+						this.maze.putTarget(new Target(path,BLINKY_START));
 					}else if(modelTextChar=="p"){
 						this.ghosts[PINKY]=new Pinky(path);
-						this.maze.putMark(path,PINKY_START);
+						this.maze.putTarget(new Target(path,PINKY_START));
 					}else if(modelTextChar=="i"){
 						this.ghosts[INKY]=new Inky(path);
-						this.maze.putMark(path,BLINKY_START);
+						this.maze.putTarget(new Target(path,BLINKY_START));
 					}else if(modelTextChar=="c"){
 						this.ghosts[CLYDE]=new Clyde(path);
-						this.maze.putMark(path,CLYDE_START);
+						this.maze.putTarget(new Target(path,CLYDE_START));
 					}else if(modelTextChar=="B"){
-						this.maze.putMark(path,BLINKY_TARGET);
+						this.maze.putTarget(new Target(path,BLINKY_TARGET));
 					}else if(modelTextChar=="P"){
-						this.maze.putMark(path,PINKY_TARGET);
+						this.maze.putTarget(new Target(path,PINKY_TARGET));
 					}else if(modelTextChar=="I"){
-						this.maze.putMark(path,INKY_TARGET);
+						this.maze.putTarget(new Target(path,INKY_TARGET));
 					}else if(modelTextChar=="C"){
-						this.maze.putMark(path,CLYDE_TARGET);
+						this.maze.putTarget(new Target(path,CLYDE_TARGET));
 					}
 				}				
 			}
@@ -257,16 +261,16 @@ function Model(){
 		for(var iy=0;iy<this.maze.ymax;iy++){
 			for(var ix=0;ix<this.maze.xmax;ix++){
 				var elem=this.maze.getElem(ix,iy);
-				if(elem instanceof Path){
+				if(elem instanceof Path || elem instanceof Door){
 					var connectionCount=0;
 					var leftElem=this.maze.getElemByDirection(elem.x,elem.y,LEFT);
 					var rightElem=this.maze.getElemByDirection(elem.x,elem.y,RIGHT);
 					var upElem=this.maze.getElemByDirection(elem.x,elem.y,UP);
 					var downElem=this.maze.getElemByDirection(elem.x,elem.y,DOWN);
-					if(leftElem instanceof Path && !(leftElem instanceof Door)){elem.addConnection(LEFT,leftElem);connectionCount++;}
-					if(rightElem instanceof Path && !(rightElem instanceof Door)){elem.addConnection(RIGHT,rightElem);connectionCount++;}
-					if(upElem instanceof Path && !(upElem instanceof Door)){elem.addConnection(UP,upElem);connectionCount++;}
-					if(downElem instanceof Path && !(downElem instanceof Door)){elem.addConnection(DOWN,downElem);connectionCount++;}
+					if(leftElem instanceof Path ||leftElem instanceof Door){elem.addConnection(LEFT,leftElem);connectionCount++;}
+					if(rightElem instanceof Path ||rightElem instanceof Door){elem.addConnection(RIGHT,rightElem);connectionCount++;}
+					if(upElem instanceof Path|| upElem instanceof Door){elem.addConnection(UP,upElem);connectionCount++;}
+					if(downElem instanceof Path|| downElem instanceof Door){elem.addConnection(DOWN,downElem);connectionCount++;}
 					if(connectionCount>2){elem.isIntersection=true;}
 				}
 			}
@@ -280,7 +284,7 @@ function Model(){
 		/** Define Target */
 		if(this.time==1){
 			/** Ghost Scatter */
-			for(var gi in this.ghosts){this.ghosts[gi].setTarget(this.maze.getMark(ghostTargets[gi]));}						
+			for(var gi in this.ghosts){this.ghosts[gi].setTarget(this.maze.getTarget(ghostTargets[gi]));}						
 		}else if(this.time==500){
 			/** Ghost Chase */
 			for(var gi in this.ghosts){
@@ -302,6 +306,10 @@ function Model(){
 	
 	this.movePuckman=function(direction){
 		
+		if(this.puckman.isEaten){
+			return;
+		}
+		
 		/** Eat */
 		var ball=this.balls[this.puckman.x+":"+this.puckman.y];
 		if(ball!=undefined){
@@ -321,7 +329,7 @@ function Model(){
 			if(ghost.status==FRIGHTENED && !ghost.isEaten && ghost.x==this.puckman.x && ghost.y==this.puckman.y){
 				this.puckman.eat(ghost);
 				ghost.isEaten=true;
-				ghost.target=this.maze.getMark(PEN_EXIT);
+				ghost.target=this.maze.getTarget(PEN_EXIT);
 				ghost.speed=1;
 				console.log("puckman eat "+gi);
 			}
@@ -332,7 +340,7 @@ function Model(){
 			if(direction!=NONE){
 				var path=this.maze.getElem(this.puckman.x, this.puckman.y);
 				var dPath=path.connections[direction];
-				if(dPath!=null && dPath!=undefined){this.puckman.direction=direction;}
+				if(dPath!=null && dPath!=undefined && !(dPath instanceof Door)){this.puckman.direction=direction;}
 			}
 			
 			if(this.puckman.direction!=NONE){
@@ -402,17 +410,24 @@ function Model(){
 		
 		/** Target Reached */
 		if(ghost.x==ghost.target.x && ghost.y==ghost.target.y){
-			var penExit=this.maze.getMark(PEN_EXIT);
-			if(penExit.x==ghost.x && penExit.y==ghost.y){
-				ghost.target=this.maze.getMark(ghostPens[ghost.name]);
-				console.log("PEN EXIT REACHED["+ghost.target.x+","+ghost.target.y+"]");
-			//}else{
+			
+			console.log(ghost.name+"["+ghost.status+"]"+"->TARGET REACHED["+ghost.target.x+","+ghost.target.y+","+ghost.target.name+"]");
+			
+			if(ghost.target.name==PUCKMAN){
+				if(ghost.status!=FRIGHTENED){
+					this.puckman.isEaten=true;
+					ghost.setTarget(this.maze.getTarget(ghostTargets[ghost.name]));
+					ghost.status=SCATTER;				
+				}
+			}else if(ghost.target.name==PEN_EXIT){
+				ghost.target=this.maze.getTarget(ghostPens[ghost.name]);
+			}else if(ghost.target.name==ghostPens[ghost.name]){
 				ghost.isEaten=false;
-				ghost.speed=0.5;
-				console.log("PEN REACHED");
+				ghost.setTarget(this.maze.getTarget(ghostTargets[ghost.name]));
+				ghost.status=SCATTER;				
 			}
-			ghost.status=SCATTER;
-			ghost.setTarget(this.maze.getMark(ghostTargets[ghost.name]));				
+
+			console.log(ghost.name+"->NEW TARGET["+ghost.target.x+","+ghost.target.y+","+ghost.target.name+"]");	
 		}
 	};
 };
@@ -425,7 +440,7 @@ function View(model,controller){
 	this.model=model;
 	this.model.addView(this);
 	this.controller=controller;
-	this.scale=3;
+	this.scale=1;
 	this.setCanvas;
 	this.setContext;
 	this.actorCanvas;
@@ -564,7 +579,7 @@ function View(model,controller){
 			spriteName=spriteName+"S_";
 		}
 		
-		if(this.model.time % 20 < 10){
+		if(this.model.time % 20 < 10 || puckman.isEaten){
 			spriteName=spriteName+"NONE";		
 		}else{
 			spriteName=spriteName+puckman.direction;
