@@ -6,11 +6,30 @@
  * An attempt to reproduce in Html5 Canvas/js
  * original Pac-man video-game
  * by Toru Iwatani/Shigeo Funaki/Toshio Kai/Namco
+ * 
+ * TODO Manage eating process and score
+ * TODO Puckman respawn
+ * TODO Ghost respawn
+ * TODO Puckman life count
+ * TODO Ghost pen should be close for active ghost
+ * TODO Ghost wait in Pen going up and down
+ * TODO Ghost go out of Pen by the middle of the door
+ * TODO Add periodical change of ghost status
+ * TODO Add general level configuration for speeds and status change
+ * TODO Add food bonus
+ * TODO Display score 
+ * TODO implement Blinky moves
+ * TODO implement Pinky moves
+ * TODO implement Inky moves
+ * TODO implement Clide moves
+ * TODO Store high-score
+ * TODO Add splash screen
+ * TODO Add sounds
  */
 
 var	NONE="NONE",LEFT="LEFT",RIGHT="RIGHT",UP="UP",DOWN="DOWN";
 
-var	SCATTER="SCATTER",CHASE="CHASE",FRIGHTENED="FRIGHTENED";
+var	PENNED="PENNED",SCATTER="SCATTER",CHASE="CHASE",FRIGHTENED="FRIGHTENED";
 
 var	BLINKY="BLINKY",PINKY="PINKY",INKY="INKY",CLYDE="CLYDE",
 	PUCKMAN="PUCKMAN",PUCKMAN_START="PUCKMAN_START",PEN_EXIT="PEN_EXIT",
@@ -24,6 +43,7 @@ var OppositeDirections = {NONE:NONE,LEFT:RIGHT,RIGHT:LEFT,UP:DOWN,DOWN:UP};
 var ghostNames=new Array(BLINKY,PINKY,INKY,CLYDE);
 var ghostTargets = {BLINKY:BLINKY_TARGET,PINKY:PINKY_TARGET,INKY:INKY_TARGET,CLYDE:CLYDE_TARGET};
 var ghostPens = {BLINKY:PINKY_START,PINKY:PINKY_START,INKY:INKY_START,CLYDE:CLYDE_START};
+var ghostSpeeds = {SCATTER:0.5,CHASE:0.8,FRIGHTENED:0.5};
 
 var offsets={NONE:new Offset(0,0),LEFT:new Offset(-1,0),RIGHT:new Offset(1,0),UP:new Offset(0,-1),DOWN:new Offset(0,1)};
 
@@ -120,11 +140,27 @@ function Door(x,y){
 function Food(isSuper){
 	this.isSuper=isSuper;
 	this.isEaten=false;
+	this.score=0;
+	this.digestTime=0;
+	this.free=true;
+	this.consume=function(){
+		if(this.digestTime>0){
+			this.isEaten=true;
+			this.free=false;
+			this.digestTime=this.digestTime-1;
+			return true;
+		}else{
+			this.free=true;
+			return false;
+		}
+	};
 }
 
 function Ball(position,isSuper){
 	Position.call(this, position.x, position.y);
 	Food.call(this,isSuper);
+	this.score=this.isSuper?20:10;
+	this.digestTime=this.isSuper?2:1;
 };
 
 function Target(position,name){
@@ -134,7 +170,7 @@ function Target(position,name){
 
 function Actor(position,name){
 	Target.call(this,position,name);
-	Food.call(false);
+	Food.call(this,false);
 	this.offset=new Offset(TILE_SIZE,TILE_SIZE/2);
 	this.direction=NONE;
 	this.moveTo=function(position){
@@ -146,39 +182,63 @@ function Actor(position,name){
 
 function Ghost(position,name){
 	Actor.call(this,position,name);
-	Food.call(this,false);
+	this.status=PENNED;
 	this.target=new Target(0,0,NONE);
 	this.setTarget=function(target){this.target=target;};
-	this.status=SCATTER;
-	this.setStatus=function(status){this.status=status;this.direction=OppositeDirections[this.direction]};
+	this.setStatus=function(status){
+		this.status=status;
+		this.direction=OppositeDirections[this.direction];
+		this.speed=ghostSpeeds[this.status];
+	};
+	this.respawn=function(){
+		this.setStatus(PENNED);
+		this.direction=NONE;
+		this.score=100;
+		this.digestTime=20;
+	};
+	this.respawn();
 };
 function Blinky(position){
 	Ghost.call(this,position,BLINKY);
-	this.direction=RIGHT;
 };
 
 function Pinky(position){
 	Ghost.call(this,position,PINKY);
-	this.direction=UP;
 };
 
 function Inky(position){
 	Ghost.call(this,position,INKY);
-//	this.direction=RIGHT;
-	this.direction=UP;
 };
 
 function Clyde(position){
 	Ghost.call(this,position,CLYDE);
-//	this.direction=LEFT;
-	this.direction=UP;	
 };
 
 function Puckman(position){
 	Actor.call(this,position,PUCKMAN);
 	this.isSuper=false;	
-	this.eat=function(food){this.isSuper=food.isSuper;};
 	this.speed=0.8;
+	this.food=null;
+	this.eat=function(food){
+		this.food=food;
+		this.isSuper=food.isSuper;
+		this.score=this.score+food.score;
+		this.digestTime=food.digestTime;
+		this.food.consume();
+		console.log("PUCKMAN->EAT +"+food.score+"="+this.score);
+	};
+	this.digest=function(){
+		if(this.food!=null){if(!this.food.consume()){this.food=null;}}
+		return !this.food==null;
+	};
+	this.respawn=function(){
+		this.direction=NONE;
+		this.speed=0.8;
+		this.food=null;
+		this.isEaten=false;
+		this.free=true;
+	};
+	this.respawn();
 };
 
 /**
@@ -284,6 +344,18 @@ function Model(){
 		}
 	};
 	
+	this.start=function(){
+		if(this.puckman.isEaten){
+			var puckmanStart = this.maze.getTarget(PUCKMAN_START);
+			this.puckman.x=puckmanStart.x;
+			this.puckman.y=puckmanStart.y;
+			this.puckman.offset=new Offset(TILE_SIZE,TILE_SIZE/2);
+			this.puckman.respawn();
+			return true;
+		}
+		return false;
+	};
+	
 	this.animate=function(inputDirection){
 		/** Animate model */
 		this.time++;
@@ -297,8 +369,8 @@ function Model(){
 			for(var gi in this.ghosts){
 				var ghost=this.ghosts[gi];
 				if(!ghost.isEaten){
+					ghost.setStatus(CHASE);
 					ghost.setTarget(this.puckman);
-					ghost.speed=0.9;
 				}
 			}	
 		}
@@ -312,61 +384,53 @@ function Model(){
 	};
 	
 	this.movePuckman=function(direction){
+		/** Block */
+		if(!this.puckman.free || this.puckman.isEaten){return;}
 		
-		if(this.puckman.isEaten){
-			return;
-		}
+		/** Speed */
+		if(this.time%4>=(4*this.puckman.speed)){return;}
 		
-		/** Eat */
+		/** Digest */
+		if(this.puckman.digest()){return;}
+		
+		/** Eat Ball */
 		var ball=this.balls[this.puckman.x+":"+this.puckman.y];
-		if(ball!=undefined){
+		if(ball!=undefined && !ball.isEaten){
 			this.puckman.eat(ball);
-			if(ball.isSuper){
-				for(var gi in this.ghosts){
-					var ghost=this.ghosts[gi];
-					ghost.setStatus(FRIGHTENED);
-					ghost.speed=0.5;
-				}				
-			}
-			delete(this.balls[this.puckman.x+":"+this.puckman.y]);
-		}
+			if(ball.isSuper){for(var gi in this.ghosts){this.ghosts[gi].setStatus(FRIGHTENED);}}
+			return;}
 		
+		/** Eat Ghost */
 		for(var gi in this.ghosts){
 			var ghost=this.ghosts[gi];
 			if(ghost.status==FRIGHTENED && !ghost.isEaten && ghost.x==this.puckman.x && ghost.y==this.puckman.y){
 				this.puckman.eat(ghost);
-				ghost.isEaten=true;
-				ghost.target=this.maze.getTarget(PEN_EXIT);
+				ghost.setTarget(this.maze.getTarget(PEN_EXIT));
 				ghost.speed=1;
-				console.log("puckman eat "+gi);
+				return;
 			}
 		}
 		
 		/** Move */
-		if(this.time%4<(4*this.puckman.speed)){
-			if(direction!=NONE){
-				var path=this.maze.getElem(this.puckman.x, this.puckman.y);
-				var dPath=path.connections[direction];
-				if(dPath!=null && dPath!=undefined && !(dPath instanceof Door)){this.puckman.direction=direction;}
-			}
-			
-			if(this.puckman.direction!=NONE){
-				var path=this.maze.getElem(this.puckman.x, this.puckman.y);
-				var dPath=path.connections[this.puckman.direction];
-				
-				if(	(dPath!=undefined) 
-					|| (this.direction=LEFT && this.puckman.offset.x>TILE_SIZE/2)
-					|| (this.direction=RIGHT && this.puckman.offset.x<TILE_SIZE/2)
-					|| (this.direction=UP && this.puckman.offset.y>TILE_SIZE/2)
-					|| (this.direction=DOWN && this.puckman.offset.y<TILE_SIZE/2)
-				){
-					if(this.puckman.offset.add(offsets[this.puckman.direction])){
-						this.puckman.moveTo(dPath);
-					}			
-				}
-			}
+		if(direction==NONE){return;};
+
+		var path=this.maze.getElem(this.puckman.x, this.puckman.y);
+		var dPath=path.connections[direction];
+		if(dPath!=null && dPath!=undefined && !(dPath instanceof Door)){
+			this.puckman.direction=direction;
 		}
+		dPath=path.connections[this.puckman.direction];
 		
+		if(	(dPath!=undefined) 
+			|| (this.direction=LEFT && this.puckman.offset.x>TILE_SIZE/2)
+			|| (this.direction=RIGHT && this.puckman.offset.x<TILE_SIZE/2)
+			|| (this.direction=UP && this.puckman.offset.y>TILE_SIZE/2)
+			|| (this.direction=DOWN && this.puckman.offset.y<TILE_SIZE/2)
+		){
+			if(this.puckman.offset.add(offsets[this.puckman.direction])){
+				this.puckman.moveTo(dPath);
+			}			
+		}
 	};
 	
 	this.chooseGhostDirection=function(ghost){
@@ -405,40 +469,47 @@ function Model(){
 	
 	this.moveGhost=function(name){
 		var ghost=this.ghosts[name];
-		var path=this.maze.getElem(ghost.x,ghost.y);
-		if(this.time%4<(4*ghost.speed*path.speedModifier)){			
-			if(ghost.offset.x==TILE_SIZE/2 && ghost.offset.y==TILE_SIZE/2){
-				ghost.direction=this.chooseGhostDirection(ghost);
-			}
-			
-			if(ghost.offset.add(offsets[ghost.direction])){
-				ghost.moveTo(path.connections[ghost.direction]);
-			}
-		}
+
+		/** Block */
+		if(!ghost.free){return;}
 		
-		if(ghost.status!=FRIGHTENED && ghost.x==this.puckman.x && ghost.y==this.puckman.y){
+		/** Status */
+		
+		/** Speed */
+		var path=this.maze.getElem(ghost.x,ghost.y);
+		if(this.time%4>=(4*ghost.speed*path.speedModifier)){return;}
+		
+		/** Eat */
+		if(ghost.status!=FRIGHTENED && this.puckman.isEaten==false && ghost.x==this.puckman.x && ghost.y==this.puckman.y){
 			this.puckman.isEaten=true;
 			ghost.setTarget(this.maze.getTarget(ghostTargets[ghost.name]));
-			ghost.setStatus(SCATTER);
+			ghost.direction=NONE;
 			console.log(ghost.name+"["+ghost.status+"]"+"->EAT PUCKMAN");
 		}
 		
-		/** Target Reached */
+		/** Move */
+		if(ghost.offset.x==TILE_SIZE/2 && ghost.offset.y==TILE_SIZE/2){
+			ghost.direction=this.chooseGhostDirection(ghost);
+		}
+		if(ghost.offset.add(offsets[ghost.direction])){
+			ghost.moveTo(path.connections[ghost.direction]);
+		}
+				
+		/** Target Change */
 		if(ghost.x==ghost.target.x && ghost.y==ghost.target.y){
 			
 			console.log(ghost.name+"["+ghost.status+"]"+"->TARGET REACHED["+ghost.target.x+","+ghost.target.y+","+ghost.target.name+"]");
 			
-			if(ghost.target.name==PUCKMAN){
-			}else if(ghost.target.name==PEN_EXIT){
+			if(ghost.target.name==PEN_EXIT){
 				if(ghost.isEaten){
-					ghost.target=this.maze.getTarget(ghostPens[ghost.name]);
+					ghost.setTarget(this.maze.getTarget(ghostPens[ghost.name]));
 				}else{
 					ghost.setTarget(this.maze.getTarget(ghostTargets[ghost.name]));					
 				}
 			}else if(ghost.target.name==ghostPens[ghost.name]){
-				ghost.isEaten=false;
+				ghost.respawn();
 				ghost.setStatus(SCATTER);				
-				ghost.target=this.maze.getTarget(ghostPens[ghost.name]);
+				ghost.setTarget(this.maze.getTarget(ghostTargets[ghost.name]));
 			}
 
 			console.log(ghost.name+"->NEW TARGET["+ghost.target.x+","+ghost.target.y+","+ghost.target.name+"]");	
@@ -454,7 +525,7 @@ function View(model,controller){
 	this.model=model;
 	this.model.addView(this);
 	this.controller=controller;
-	this.scale=2;
+	this.scale=1;
 	this.setCanvas;
 	this.setContext;
 	this.actorCanvas;
@@ -478,6 +549,8 @@ function View(model,controller){
 		//console.log("keyDownListener evt="+evt.keyCode+" direction="+direction);
 		if(direction!=undefined){
 			view.controller.changePuckmanDirection(direction);
+		}else if(evt.keyCode==32){
+			view.controller.start();
 		}
 	};
 	window.addEventListener('keydown',keyDownListener,true);
@@ -532,7 +605,7 @@ function View(model,controller){
 				
 				if(elem instanceof Path){
 					this.setContext.beginPath();
-					drawRoundRec(this.setContext,(elem.x*TILE_SIZE-TILE_SIZE/3)*this.scale,(elem.y*TILE_SIZE-TILE_SIZE/3)*this.scale,(TILE_SIZE*7/4)*this.scale,(TILE_SIZE*7/4)*this.scale,TILE_SIZE/3*this.scale);
+					drawRoundRec(this.setContext,(elem.x*TILE_SIZE-TILE_SIZE/3)*this.scale,(elem.y*TILE_SIZE-TILE_SIZE/3)*this.scale,(TILE_SIZE*7/4)*this.scale,(TILE_SIZE*7/4)*this.scale,TILE_SIZE*2/3*this.scale);
 					this.setContext.fillStyle = "#222222";
 					this.setContext.fill();
 					this.setContext.closePath();							
@@ -543,8 +616,6 @@ function View(model,controller){
 					this.setContext.fill();
 					this.setContext.closePath();														
 				}
-
-				
 			}
 		}
 	};
@@ -559,13 +630,15 @@ function View(model,controller){
 		for(var bi in this.model.balls){
 			var ball = this.model.balls[bi];
 
-			var spriteName="BALL";
-			if(ball.isSuper){spriteName="SUPERBALL";}	
-			
-			if(this.model.time % 20 < 15){spriteName=spriteName+ANIM1;		
-			}else{spriteName=spriteName+ANIM2;}
-			
-			this.drawSprite(this.actorContext, spriteName,ball.x*TILE_SIZE*this.scale, ball.y*TILE_SIZE*this.scale);
+			if(!ball.isEaten){
+				var spriteName="BALL";
+				if(ball.isSuper){spriteName="SUPERBALL";}	
+				
+				if(this.model.time % 20 < 15){spriteName=spriteName+ANIM1;		
+				}else{spriteName=spriteName+ANIM2;}
+				
+				this.drawSprite(this.actorContext, spriteName,ball.x*TILE_SIZE*this.scale, ball.y*TILE_SIZE*this.scale);
+			}
 		}
 	};
 
@@ -672,6 +745,7 @@ function View(model,controller){
 		}
 		
 		//SUPERBALL
+		var aBallColor="rgba("+ballcolor+",0.3)";
 		for(var ai in ballSpriteAnims){
 			switch(ballSpriteAnims[ai]){
 				case ANIM1:
@@ -878,18 +952,22 @@ function View(model,controller){
 			spriteContext.closePath();
 			
 			//MOUTH
+			var begMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/14;
+			var endMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/14;
+			var mouthWidthIn=ghostradius/3;
+			var mouthWidthLips=ghostradius/1.5;
 			switch(ghostSpriteAnims[ai]){
 				case ANIM1:
-					var begMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/14;
-					var endMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/14;
-					var mouthWidthIn=ghostradius/3;
-					var mouthWidthLips=ghostradius/1.5;
+					begMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/14;
+					endMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/14;
+					mouthWidthIn=ghostradius/3;
+					mouthWidthLips=ghostradius/1.5;
 					break;
 				case ANIM2:
-					var begMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/4;
-					var endMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/4;
-					var mouthWidthIn=ghostradius/2.5;
-					var mouthWidthLips=ghostradius/1.5;
+					begMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/4;
+					endMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/4;
+					mouthWidthIn=ghostradius/2.5;
+					mouthWidthLips=ghostradius/1.5;
 					break;
 			}			
 			spriteContext.beginPath();
@@ -1062,5 +1140,9 @@ function Controller(model){
 	/** Change Puckman direction */
 	this.changePuckmanDirection=function(direction){
 		this.puckmanDirection=direction;
+	};
+	
+	this.start=function(){
+		if(this.model.start()){this.puckmanDirection=NONE;}
 	};
 };
