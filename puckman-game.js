@@ -192,7 +192,7 @@ function Ghost(position,name){
 	};
 	this.respawn=function(){
 		this.setStatus(PENNED);
-		this.direction=NONE;
+		this.direction=LEFT;
 		this.score=100;
 		this.digestTime=20;
 	};
@@ -525,7 +525,7 @@ function View(model,controller){
 	this.model=model;
 	this.model.addView(this);
 	this.controller=controller;
-	this.scale=1;
+	this.scale=2;
 	this.setCanvas;
 	this.setContext;
 	this.actorCanvas;
@@ -605,7 +605,7 @@ function View(model,controller){
 				
 				if(elem instanceof Path){
 					this.setContext.beginPath();
-					drawRoundRec(this.setContext,(elem.x*TILE_SIZE-TILE_SIZE/3)*this.scale,(elem.y*TILE_SIZE-TILE_SIZE/3)*this.scale,(TILE_SIZE*7/4)*this.scale,(TILE_SIZE*7/4)*this.scale,TILE_SIZE*2/3*this.scale);
+					drawRoundRec(this.setContext,(elem.x*TILE_SIZE-TILE_SIZE/3)*this.scale,(elem.y*TILE_SIZE-TILE_SIZE/3)*this.scale,(TILE_SIZE*7/4)*this.scale,(TILE_SIZE*7/4)*this.scale,TILE_SIZE*2/5*this.scale);
 					this.setContext.fillStyle = "#222222";
 					this.setContext.fill();
 					this.setContext.closePath();							
