@@ -24,7 +24,7 @@
  * TODO implement Clide moves
  * TODO Store high-score
  * TODO Add splash screen
- * TODO Add sounds
+ * TODO Add sounds 
  */
 
 var	NONE="NONE",LEFT="LEFT",RIGHT="RIGHT",UP="UP",DOWN="DOWN";
@@ -219,6 +219,7 @@ function Puckman(position){
 	this.isSuper=false;	
 	this.speed=0.8;
 	this.food=null;
+	this.life=3;
 	this.eat=function(food){
 		this.food=food;
 		this.isSuper=food.isSuper;
@@ -231,12 +232,19 @@ function Puckman(position){
 		if(this.food!=null){if(!this.food.consume()){this.food=null;}}
 		return !this.food==null;
 	};
+	this.startPosition=position;
 	this.respawn=function(){
-		this.direction=NONE;
-		this.speed=0.8;
-		this.food=null;
-		this.isEaten=false;
-		this.free=true;
+		if(this.life>0){
+			this.x=this.startPosition.x;
+			this.y=this.startPosition.y;
+			this.offset=new Offset(TILE_SIZE,TILE_SIZE/2);
+			this.direction=NONE;
+			this.speed=0.8;
+			this.food=null;
+			this.isEaten=false;
+			this.free=true;
+			this.life=this.life-1;
+		}
 	};
 	this.respawn();
 };
@@ -346,18 +354,27 @@ function Model(){
 	
 	this.start=function(){
 		if(this.puckman.isEaten){
-			var puckmanStart = this.maze.getTarget(PUCKMAN_START);
-			this.puckman.x=puckmanStart.x;
-			this.puckman.y=puckmanStart.y;
-			this.puckman.offset=new Offset(TILE_SIZE,TILE_SIZE/2);
 			this.puckman.respawn();
 			return true;
 		}
 		return false;
 	};
 	
+	/** 
+	 * Game loop :
+	 * * start
+	 *   * init or respawn actors
+	 * * init turn
+	 *   * change actor status
+	 * * puckman 
+	 *    * eat food
+	 *    * move
+	 * * ghost
+	 *    * eat
+	 *    * move
+	*/
 	this.animate=function(inputDirection){
-		/** Animate model */
+		/** Time count */
 		this.time++;
 		
 		/** Define Target */
@@ -387,12 +404,12 @@ function Model(){
 		/** Block */
 		if(!this.puckman.free || this.puckman.isEaten){return;}
 		
-		/** Speed */
-		if(this.time%4>=(4*this.puckman.speed)){return;}
-		
 		/** Digest */
 		if(this.puckman.digest()){return;}
 		
+		/** Speed */
+		if(this.time%4>=(4*this.puckman.speed)){return;}
+				
 		/** Eat Ball */
 		var ball=this.balls[this.puckman.x+":"+this.puckman.y];
 		if(ball!=undefined && !ball.isEaten){
