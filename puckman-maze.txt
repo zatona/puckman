@@ -12,7 +12,7 @@ x.xxxx.xx.xxxxxxxx.xx.xxxx.x
 x......xx....xx....xx......x
 xxxxxx.xxxxx xx xxxxx.xxxxxx
 xxxxxx.xxxxx xx xxxxx.xxxxxx
-xxxxxx.xx    b     xx.xxxxxx
+xxxxxx.xx   yb y   xx.xxxxxx
 xxxxxx.xx xxxddxxx xx.xxxxxx
 xxxxxx.xx x      x xx.xxxxxx
 tttttt.   xi p c x   .tttttt
@@ -24,7 +24,7 @@ xxxxxx.xx xxxxxxxx xx.xxxxxx
 x............xx............x
 x.xxxx.xxxxx.xx.xxxxx.xxxx.x
 x.xxxx.xxxxx.xx.xxxxx.xxxx.x
-xo..xx.......m .......xx..ox
+xo..xx......zm z......xx..ox
 xxx.xx.xx.xxxxxxxx.xx.xx.xxx
 xxx.xx.xx.xxxxxxxx.xx.xx.xxx
 x......xx....xx....xx......x

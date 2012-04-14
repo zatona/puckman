@@ -37,13 +37,7 @@ var	BLINKY="BLINKY",PINKY="PINKY",INKY="INKY",CLYDE="CLYDE",
 	BLINKY_TARGET="BLINKY_TARGET",PINKY_TARGET="PINKY_TARGET",INKY_TARGET="INKY_TARGET",CLYDE_TARGET="CLYDE_TARGET";
 
 var directions= new Array(NONE,UP,DOWN,LEFT,RIGHT);
-var ghostDirections= new Array(UP,DOWN,LEFT,RIGHT);
-var angleDirections = {NONE:-1,LEFT:180,RIGHT:0,UP:270,DOWN:90};
-var OppositeDirections = {NONE:NONE,LEFT:RIGHT,RIGHT:LEFT,UP:DOWN,DOWN:UP};
 var ghostNames=new Array(BLINKY,PINKY,INKY,CLYDE);
-var ghostTargets = {BLINKY:BLINKY_TARGET,PINKY:PINKY_TARGET,INKY:INKY_TARGET,CLYDE:CLYDE_TARGET};
-var ghostPens = {BLINKY:PINKY_START,PINKY:PINKY_START,INKY:INKY_START,CLYDE:CLYDE_START};
-var ghostSpeeds = {PENNED:0.3,SCATTER:0.5,CHASE:0.8,FRIGHTENED:0.5};
 
 var offsets={NONE:new Offset(0,0),LEFT:new Offset(-1,0),RIGHT:new Offset(1,0),UP:new Offset(0,-1),DOWN:new Offset(0,1)};
 
@@ -117,7 +111,7 @@ function Position(x,y){
 	this.x=x;
 	this.y=y;
 	/** Calculate distance with position */
-	this.getDistance=function(position){return Math.abs(this.x-position.x)+Math.abs(this.y-position.y);};
+	this.getDistance=function(position){return Math.pow(Math.abs(this.x-position.x),2)+Math.pow(Math.abs(this.y-position.y),2);};
 };
 
 function Path(x,y){
@@ -126,6 +120,7 @@ function Path(x,y){
 	this.connections=Array();
 	this.addConnection=function(direction,path){this.connections[direction]=path;};
 	this.speedModifier=1;
+	this.isGhostRestrictionZone=false;
 };
 
 function Block(x,y){
@@ -134,7 +129,6 @@ function Block(x,y){
 
 function Door(x,y){
 	Path.call(this, x, y);
-	this.isOpen=false;
 };
 
 function Food(isSuper){
@@ -161,10 +155,7 @@ function Actor(position,name){
 	Food.call(this,false);
 	this.offset=new Offset(TILE_SIZE,TILE_SIZE/2);
 	this.direction=NONE;
-	this.moveTo=function(position){
-		this.x=position.x;
-		this.y=position.y;
-	};
+	this.moveTo=function(position){this.x=position.x;this.y=position.y;};
 	this.speed=0.5;
 	this.startPosition=position;
 	this.free=false;
@@ -175,12 +166,9 @@ function Ghost(position,name){
 	this.status=SCATTER;
 	this.target=new Target(0,0,NONE);
 	this.setTarget=function(target){this.target=target;};
-	this.setStatus=function(status){
-		this.status=status;
-		this.direction=OppositeDirections[this.direction];
-		this.speed=ghostSpeeds[this.status];
-	};
+	this.setStatus=function(status){this.status=status;};
 };
+
 function Blinky(position){
 	Ghost.call(this,position,BLINKY);
 };
@@ -204,20 +192,25 @@ function Puckman(position){
 	this.speed=0.8;
 	this.food=null;
 	this.life=3;
-	this.eat=function(food){
-		if(!food.isEaten){
-			this.food=food;
-			this.isSuper=food.isSuper;
-			this.score=this.score+food.score;
-		}
-	};
+	this.eat=function(food){if(!food.isEaten){this.food=food;this.isSuper=food.isSuper;this.score=this.score+food.score;}};
 };
 
 /**
  * Model
  */
 function Model(){
+	var OppositeDirections = {NONE:NONE,LEFT:RIGHT,RIGHT:LEFT,UP:DOWN,DOWN:UP};
+	var ghostDirections= new Array(UP,LEFT,DOWN,RIGHT);
+	var ghostTargets = {BLINKY:BLINKY_TARGET,PINKY:PINKY_TARGET,INKY:INKY_TARGET,CLYDE:CLYDE_TARGET};
+	var ghostStarts = {BLINKY:BLINKY_START,PINKY:PINKY_START,INKY:INKY_START,CLYDE:CLYDE_START};
+	var ghostPens = {BLINKY:PINKY_START,PINKY:PINKY_START,INKY:INKY_START,CLYDE:CLYDE_START};
+	var ghostSpeeds = {PENNED:0.3,SCATTER:0.5,CHASE:0.8,FRIGHTENED:0.5};	
+	var ghostStatusCycle = new Array(7,20,7,20,5,20,5,100000);
+	
 	this.time=0;
+	this.ghostStatus=SCATTER;
+	this.ghostStatusTime=0;
+	this.ghostStatusCnt=0;
 	this.maze;
 	this.balls;
 	this.ghosts;
@@ -230,7 +223,7 @@ function Model(){
 	
 	/**
 	 * Load Model from text
-	 * x : wall / d : door /  : path
+	 * x : wall / d : door /  : path / t: tunnel path(speed limit to ghost) /y : y path(up forbidden to ghost)  /z : z path(up forbidden to ghost with ball) 
 	 * . : ball / o : energizer
 	 * m : Puckman
 	 * b : Blinky, and pen exit
@@ -260,9 +253,14 @@ function Model(){
 					this.maze.putElem(new Door(ix,iy));
 				}else{
 					var path=new Path(ix,iy);
-					this.maze.putElem(path);					
+					this.maze.putElem(path);
 					
-					if(modelTextChar=="t"){
+					if(modelTextChar=="y"){
+						path.isGhostRestrictionZone=true;
+					}if(modelTextChar=="z"){
+						path.isGhostRestrictionZone=true;
+						this.balls[path.x+":"+path.y]=new Ball(path,false);
+					}else if(modelTextChar=="t"){
 						path.speedModifier=0.5;					
 					}else if(modelTextChar=="."){
 						this.balls[path.x+":"+path.y]=new Ball(path,false);
@@ -319,7 +317,7 @@ function Model(){
 	
 	this.start=function(){
 		if(this.puckman.isEaten && this.puckman.life>0){
-			/** Respawn Puckman */
+			/** Respawn Puckman*/
 			this.respawnPuckman(this.puckman);
 			
 			/** Respawn Ghosts*/
@@ -327,6 +325,12 @@ function Model(){
 				var ghost=this.ghosts[gi];
 				this.respawnGhost(ghost);				
 			};
+			
+			/** Initialize Ghost status timer*/
+			this.ghostStatus=SCATTER;
+			this.ghostStatusTime=0;
+			this.ghostStatusCnt=0;
+			
 			return true;
 		}
 		return false;
@@ -361,9 +365,15 @@ function Model(){
 		ghost.setTarget(this.maze.getTarget(PEN_EXIT));
 	};
 
+	this.changeGhostStatus=function(ghost,status){
+		ghost.setStatus(status);
+		ghost.direction==OppositeDirections[ghost.direction];
+		ghost.speed=ghostSpeeds[ghost.status];
+	}
+	
 	this.frightGhost=function(ghost){
-		if(!ghost.isEaten){
-			ghost.setStatus(FRIGHTENED);
+		if(!ghost.isEaten&&ghost.status!=PENNED){
+			this.changeGhostStatus(ghost,FRIGHTENED);
 			ghost.setTarget(this.maze.getTarget(ghostTargets[ghost.name]));
 		}
 	};
@@ -382,17 +392,17 @@ function Model(){
 	};
 	
 	this.ghostScatter=function(ghost){
-		ghost.setStatus(SCATTER);
+		this.changeGhostStatus(ghost,SCATTER);
 		ghost.setTarget(this.maze.getTarget(ghostTargets[ghost.name]));
 	};
 	
 	this.ghostChase=function(ghost){
-		ghost.setStatus(CHASE);
+		this.changeGhostStatus(ghost,CHASE);
 		ghost.setTarget(this.puckman);
 	};
 
 	this.penGhost=function(ghost){
-		ghost.setStatus(PENNED);
+		this.changeGhostStatus(ghost,PENNED);
 		ghost.setTarget(this.maze.getTarget(ghostPens[ghost.name]));
 	};
 	
@@ -412,6 +422,28 @@ function Model(){
 	this.animate=function(inputDirection){
 		/** Time count */
 		this.time++;
+		this.ghostStatusTime++;
+		
+		/** Ghost Status change*/
+/*		
+			this.ghostStatus=ghostStatusCycle[this.ghostStatusTime];
+			if(this.ghostStatus==CHASE){
+				for(var gi in this.ghosts){
+					var ghost=this.ghosts[gi];
+					if(ghost.status!=FRIGHTENED && ghost.status!=PENNED && !ghost.isEaten){
+						this.ghostChase(ghost);
+					}
+				}
+			}else{
+				for(var gi in this.ghosts){
+					var ghost=this.ghosts[gi];
+					if(ghost.status!=FRIGHTENED && ghost.status!=PENNED && !ghost.isEaten){
+						this.ghostScatter(ghost);
+					}
+				}				
+			}
+		}
+*/
 		
 		/** Move */
 		this.movePuckman(inputDirection);
@@ -476,12 +508,13 @@ function Model(){
 		
 		if(path.isIntersection){
 			var distance=10000;
+			//var distanceEstimation="";
 			for(gd in ghostDirections){
-				if(!(ghost.direction==OppositeDirections[ghostDirections[gd]])){
+				if(!(ghost.direction==OppositeDirections[ghostDirections[gd]]) && !(path.isGhostRestrictionZone&&ghostDirections[gd]==UP&&!ghost.status!=FRIGHTENED)){
 					var dPath = path.connections[ghostDirections[gd]];
 					if(dPath!=undefined && (!(dPath instanceof Door) || ghost.status==PENNED)){
 						var dDistance=dPath.getDistance(ghost.target);
-						//console.log("Ghost estimate "+ghostDirections[gd]+" as "+dDistance);
+						//distanceEstimation=distanceEstimation+"|["+ghostDirections[gd]+"]="+dDistance;
 						if(dDistance<distance){
 							distance=dDistance;
 							direction=ghostDirections[gd];
@@ -489,6 +522,7 @@ function Model(){
 					}
 				}
 			}
+			//console.log("["+ghost.name+"] estimate "+distanceEstimation+" choose="+direction);
 		}else{
 			if(path.connections[ghost.direction]==undefined){
 				direction=OppositeDirections[direction];
@@ -522,7 +556,7 @@ function Model(){
 		if(this.time%4>=(4*ghost.speed*path.speedModifier)){return;}
 		
 		/** Eat */
-		if(ghost.status!=FRIGHTENED && this.puckman.isEaten==false && ghost.x==this.puckman.x && ghost.y==this.puckman.y){
+		if(ghost.status!=FRIGHTENED && ghost.status!=PENNED && this.puckman.isEaten==false && ghost.x==this.puckman.x && ghost.y==this.puckman.y){
 			this.puckman.isEaten=true;
 			ghost.setTarget(this.maze.getTarget(ghostTargets[ghost.name]));
 			ghost.direction=NONE;
@@ -702,6 +736,18 @@ function View(model,controller){
 			this.drawSprite(this.statusContext, "PUCKMAN_LEFT",(il+1)*ACTOR_SIZE*this.scale, (this.model.maze.ymax*TILE_SIZE-ACTOR_SIZE-TILE_SIZE/5)*this.scale);	
 		}
 		this.statusContext.closePath();									
+		
+		/**GHOST STATUS*/
+		this.statusContext.beginPath();
+		this.statusContext.font = "50% Lucida Sans Unicode";
+		var gic=1;
+		for(var gi in this.model.ghosts){
+			var ghost = this.model.ghosts[gi];
+			this.statusContext.textAlign = "left";
+			this.statusContext.fillText(gi+":"+ghost.status+"["+ghost.target.name+"]", (2*this.model.maze.xmax*TILE_SIZE/3*this.scale),gic*(TILE_SIZE/2)*this.scale);
+			gic++;
+		}
+		this.statusContext.closePath();											
 	}
 	
 	this.drawActors=function(){
@@ -778,6 +824,8 @@ function View(model,controller){
 	};
 
 	this.loadSprites=function(){
+		var angleDirections = {NONE:-1,LEFT:180,RIGHT:0,UP:270,DOWN:90};
+
 		this.sprites = new Array();
 		var spriteCanvas;
 		var spriteContext;
