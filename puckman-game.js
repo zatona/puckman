@@ -323,7 +323,9 @@ function Model(){
 			/** Respawn Ghosts*/
 			for(var gi in this.ghosts){
 				var ghost=this.ghosts[gi];
-				this.respawnGhost(ghost);				
+				this.respawnGhost(ghost);			
+				ghost.x=ghost.startPosition.x;
+				ghost.y=ghost.startPosition.y;
 			};
 			
 			/** Initialize Ghost status timer*/
@@ -349,8 +351,6 @@ function Model(){
 	};
 	
 	this.respawnGhost=function(ghost){
-		ghost.x=ghost.startPosition.x;
-		ghost.y=ghost.startPosition.y;
 		ghost.offset=new Offset(TILE_SIZE,TILE_SIZE/2);
 		ghost.isEaten=false;
 		ghost.score=100;
