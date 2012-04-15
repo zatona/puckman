@@ -7,24 +7,25 @@
  * original Pac-man video-game
  * by Toru Iwatani/Shigeo Funaki/Toshio Kai/Namco
  * 
- * TODO Manage eating process and score
- * TODO Puckman respawn
- * TODO Ghost respawn
- * TODO Puckman life count
- * TODO Ghost pen should be close for active ghost
- * TODO Ghost wait in Pen going up and down
- * TODO Ghost go out of Pen by the middle of the door
+ * DONE Manage eating process and score
+ * DONE Puckman respawn
+ * DONE Ghost respawn
+ * DONE Puckman life count
+ * DONE Ghost pen should be close for active ghost
+ * DONE Display score 
  * TODO Add periodical change of ghost status
  * TODO Add general level configuration for speeds and status change
  * TODO Add food bonus
- * TODO Display score 
  * TODO implement Blinky moves
  * TODO implement Pinky moves
  * TODO implement Inky moves
  * TODO implement Clide moves
+ * TODO Ghost wait in Pen going up and down
+ * TODO Ghost go out of Pen by the middle of the door
  * TODO Store high-score
  * TODO Add splash screen
  * TODO Add sounds 
+ * TODO Add Sprite animation object
  */
 
 var	NONE="NONE",LEFT="LEFT",RIGHT="RIGHT",UP="UP",DOWN="DOWN";
@@ -40,6 +41,7 @@ var directions= new Array(NONE,UP,DOWN,LEFT,RIGHT);
 var ghostNames=new Array(BLINKY,PINKY,INKY,CLYDE);
 
 var offsets={NONE:new Offset(0,0),LEFT:new Offset(-1,0),RIGHT:new Offset(1,0),UP:new Offset(0,-1),DOWN:new Offset(0,1)};
+var eatenOffsets={NONE:new Offset(0,0),LEFT:new Offset(-1*TILE_SIZE/2,0),RIGHT:new Offset(1*TILE_SIZE/2,0),UP:new Offset(0,-1*TILE_SIZE/2),DOWN:new Offset(0,1*TILE_SIZE/2)};
 
 var TILE_SIZE=8;
 var ACTOR_SIZE=TILE_SIZE*2;
@@ -88,18 +90,26 @@ function Offset(x,y){
 	this.x=x;
 	this.y=y;
 	
-	this.add=function(offset){
+	this.add=function(offset,multiplicator){
 		var reset=false;
 		var xOffset=this.x;
 		var yOffset=this.y;
-		if(offset.x!=0){
-			xOffset=this.x+offset.x;
-			yOffset=TILE_SIZE/2;
-			if(xOffset>=TILE_SIZE){xOffset=0;reset=true;}else if(xOffset<0){xOffset=TILE_SIZE-1;reset=true;}
-		}else if(offset.y!=0){
-			xOffset=TILE_SIZE/2;
-			yOffset=this.y+offset.y;
-			if(yOffset>=TILE_SIZE){yOffset=0;reset=true;}else if(yOffset<0){yOffset=TILE_SIZE-1;reset=true;}			
+		var mi=0;
+		while(reset==false && mi<multiplicator){
+			if(offset.x!=0){
+				xOffset=xOffset+offset.x;
+				yOffset=TILE_SIZE/2;
+				if(xOffset>=TILE_SIZE){xOffset=0;reset=true;}
+				else if(xOffset<0){xOffset=TILE_SIZE-1;reset=true;}
+				else if(xOffset==TILE_SIZE/2){break;}
+			}else if(offset.y!=0){
+				xOffset=TILE_SIZE/2;
+				yOffset=yOffset+offset.y;
+				if(yOffset>=TILE_SIZE){yOffset=0;reset=true;}
+				else if(yOffset<0){yOffset=TILE_SIZE-1;reset=true;}
+				else if(yOffset==TILE_SIZE/2){break;}
+			}
+			mi++;
 		}
 		this.x=xOffset;
 		this.y=yOffset;
@@ -131,18 +141,18 @@ function Door(x,y){
 	Path.call(this, x, y);
 };
 
-function Food(isSuper){
-	this.isSuper=isSuper;
+function Food(){
 	this.isEaten=false;
 	this.score=0;
-	this.digestTime=0;
+	this.calorie=0;
 }
 
-function Ball(position,isSuper){
+function Ball(position,isEnergizer){
 	Position.call(this, position.x, position.y);
-	Food.call(this,isSuper);
-	this.score=this.isSuper?20:10;
-	this.digestTime=this.isSuper?2:1;
+	Food.call(this);
+	this.isEnergizer=isEnergizer;
+	this.score=this.isEnergizer?20:10;
+	this.calorie=this.isEnergizer?3:1;
 };
 
 function Target(position,name){
@@ -152,12 +162,12 @@ function Target(position,name){
 
 function Actor(position,name){
 	Target.call(this,position,name);
-	Food.call(this,false);
+	Food.call(this);
 	this.offset=new Offset(TILE_SIZE,TILE_SIZE/2);
+	this.startPosition=position;
 	this.direction=NONE;
 	this.moveTo=function(position){this.x=position.x;this.y=position.y;};
 	this.speed=0.5;
-	this.startPosition=position;
 	this.free=false;
 };
 
@@ -168,31 +178,30 @@ function Ghost(position,name){
 	this.setTarget=function(target){this.target=target;};
 	this.setStatus=function(status){this.status=status;};
 };
-
+/** Blinky aka “Akabei” or “Macky”*/
 function Blinky(position){
 	Ghost.call(this,position,BLINKY);
 };
-
+/** Pinky aka “Micky”*/
 function Pinky(position){
 	Ghost.call(this,position,PINKY);
 };
-
+/** Inky aka “Aosuke” or “Mucky”*/
 function Inky(position){
 	Ghost.call(this,position,INKY);
 };
-
+/** Clyde aka “Guzuta” or “Mocky”*/
 function Clyde(position){
 	Ghost.call(this,position,CLYDE);
 };
 
 function Puckman(position){
 	Actor.call(this,position,PUCKMAN);
-	this.isSuper=false;
 	this.isEaten=true;
 	this.speed=0.8;
 	this.food=null;
 	this.life=3;
-	this.eat=function(food){if(!food.isEaten){this.food=food;this.isSuper=food.isSuper;this.score=this.score+food.score;}};
+	this.eat=function(food){if(!food.isEaten){this.food=food;this.score=this.score+food.score;}};
 };
 
 /**
@@ -208,6 +217,7 @@ function Model(){
 	var ghostStatusCycle = new Array(7,20,7,20,5,20,5,100000);
 	
 	this.time=0;
+	this.frightTime=-1;
 	this.ghostStatus=SCATTER;
 	this.ghostStatusTime=0;
 	this.ghostStatusCnt=0;
@@ -223,7 +233,8 @@ function Model(){
 	
 	/**
 	 * Load Model from text
-	 * x : wall / d : door /  : path / t: tunnel path(speed limit to ghost) /y : y path(up forbidden to ghost)  /z : z path(up forbidden to ghost with ball) 
+	 * x : wall / d : door /  : path 
+	 * t: tunnel path(speed limit to ghost) /y : y path(up forbidden to ghost)  /z : z path(up forbidden to ghost with ball) 
 	 * . : ball / o : energizer
 	 * m : Puckman
 	 * b : Blinky, and pen exit
@@ -354,14 +365,10 @@ function Model(){
 		ghost.offset=new Offset(TILE_SIZE,TILE_SIZE/2);
 		ghost.isEaten=false;
 		ghost.score=100;
-		ghost.digestTime=20;
-		ghost.direction=LEFT;
+		ghost.calories=10;
+		ghost.direction=NONE;
 		ghost.free=false;
 		ghost.setStatus(PENNED);
-		if(ghost.name==BLINKY){
-			ghost.direction=LEFT;
-			ghost.free=true;
-		}
 		ghost.setTarget(this.maze.getTarget(PEN_EXIT));
 	};
 
@@ -369,6 +376,9 @@ function Model(){
 		ghost.setStatus(status);
 		ghost.direction==OppositeDirections[ghost.direction];
 		ghost.speed=ghostSpeeds[ghost.status];
+		if(status==SCATTER){ghost.setTarget(this.maze.getTarget(ghostTargets[ghost.name]));}
+		else if(status==CHASE){ghost.setTarget(this.puckman);}
+		else if(status==PENNED){ghost.setTarget(this.maze.getTarget(ghostPens[ghost.name]));}
 	}
 	
 	this.frightGhost=function(ghost){
@@ -378,32 +388,26 @@ function Model(){
 		}
 	};
 
+	this.puckmanFright=function(){
+		for(var gi in this.ghosts){this.frightGhost(this.ghosts[gi]);}
+		this.frightTime=300;
+	}
+	
 	this.puckmanEat=function(food){
 		this.puckman.eat(food);
-		if(food.isSuper){for(var gi in this.ghosts){this.frightGhost(this.ghosts[gi]);}}
+		if(food instanceof Ball){
+			if(food.isEnergizer){this.puckmanFright();}
+			this.ballCounter++;
+		}
 		food.isEaten=true;
-		this.ballCounter++;
 	}
 	
 	this.eatGhost=function(ghost){
+		this.puckmanEat(ghost);
+		ghost.offset.x=TILE_SIZE/2;
+		ghost.offset.y=TILE_SIZE/2;
 		ghost.setTarget(this.maze.getTarget(PEN_EXIT));
-		ghost.isEaten=true;
 		ghost.speed=1;
-	};
-	
-	this.ghostScatter=function(ghost){
-		this.changeGhostStatus(ghost,SCATTER);
-		ghost.setTarget(this.maze.getTarget(ghostTargets[ghost.name]));
-	};
-	
-	this.ghostChase=function(ghost){
-		this.changeGhostStatus(ghost,CHASE);
-		ghost.setTarget(this.puckman);
-	};
-
-	this.penGhost=function(ghost){
-		this.changeGhostStatus(ghost,PENNED);
-		ghost.setTarget(this.maze.getTarget(ghostPens[ghost.name]));
 	};
 	
 	/** 
@@ -424,30 +428,24 @@ function Model(){
 		this.time++;
 		this.ghostStatusTime++;
 		
-		/** Ghost Status change*/
-/*		
-			this.ghostStatus=ghostStatusCycle[this.ghostStatusTime];
-			if(this.ghostStatus==CHASE){
-				for(var gi in this.ghosts){
-					var ghost=this.ghosts[gi];
-					if(ghost.status!=FRIGHTENED && ghost.status!=PENNED && !ghost.isEaten){
-						this.ghostChase(ghost);
+		if(!this.puckman.isEaten && this.puckman.life>0){
+			/** Ghost Status change*/
+			if(this.frightTime>=0){
+				if(this.frightTime==0){
+					for(var gi in this.ghosts){
+						var ghost=this.ghosts[gi];
+						if(ghost.status==FRIGHTENED){
+							this.changeGhostStatus(ghost, SCATTER);
+						}
 					}
 				}
-			}else{
-				for(var gi in this.ghosts){
-					var ghost=this.ghosts[gi];
-					if(ghost.status!=FRIGHTENED && ghost.status!=PENNED && !ghost.isEaten){
-						this.ghostScatter(ghost);
-					}
-				}				
+				this.frightTime--;				
 			}
+			
+			/** Move */
+			this.movePuckman(inputDirection);
+			for(var gi in this.ghosts){this.moveGhost(gi);}
 		}
-*/
-		
-		/** Move */
-		this.movePuckman(inputDirection);
-		for(var gi in this.ghosts){this.moveGhost(gi);}
 		
 		/** Update views */
 		this.updateView();
@@ -456,9 +454,6 @@ function Model(){
 	this.movePuckman=function(direction){
 		/** Block */
 		if(!this.puckman.free || this.puckman.isEaten){return;}
-		
-		/** Digest */
-		//if(this.puckman.digest()){return;}
 		
 		/** Speed */
 		if(this.time%4>=(4*this.puckman.speed)){return;}
@@ -474,7 +469,6 @@ function Model(){
 		for(var gi in this.ghosts){
 			var ghost=this.ghosts[gi];
 			if(ghost.status==FRIGHTENED && !ghost.isEaten && ghost.x==this.puckman.x && ghost.y==this.puckman.y){
-				this.puckman.eat(ghost);
 				this.eatGhost(ghost);
 				return;
 			}
@@ -496,7 +490,7 @@ function Model(){
 			|| (this.direction=UP && this.puckman.offset.y>TILE_SIZE/2)
 			|| (this.direction=DOWN && this.puckman.offset.y<TILE_SIZE/2)
 		){
-			if(this.puckman.offset.add(offsets[this.puckman.direction])){
+			if(this.puckman.offset.add(offsets[this.puckman.direction],1)){
 				this.puckman.moveTo(dPath);
 			}			
 		}
@@ -515,10 +509,7 @@ function Model(){
 					if(dPath!=undefined && (!(dPath instanceof Door) || ghost.status==PENNED)){
 						var dDistance=dPath.getDistance(ghost.target);
 						//distanceEstimation=distanceEstimation+"|["+ghostDirections[gd]+"]="+dDistance;
-						if(dDistance<distance){
-							distance=dDistance;
-							direction=ghostDirections[gd];
-						}
+						if(dDistance<distance){distance=dDistance;direction=ghostDirections[gd];}
 					}
 				}
 			}
@@ -543,14 +534,13 @@ function Model(){
 
 		/** Block */
 		if(!ghost.free){
-			if(ghost.name==PINKY && this.ballCounter>1){ghost.free=true;}
-			else if(ghost.name==INKY && this.ballCounter>30){ghost.free=true;}				
-			else if(ghost.name==CLYDE && this.ballCounter>60){ghost.free=true;}
+			if(ghost.name==BLINKY){ghost.free=true;ghost.direction=LEFT;}
+			else if(ghost.name==PINKY && this.ballCounter>1){ghost.free=true;;ghost.direction=UP;}
+			else if(ghost.name==INKY && this.ballCounter>30){ghost.free=true;;ghost.direction=RIGHT;}				
+			else if(ghost.name==CLYDE && this.ballCounter>60){ghost.free=true;;ghost.direction=LEFT;}
 			else{return;}
 		}
-		
-		/** Status */
-		
+				
 		/** Speed */
 		var path=this.maze.getElem(ghost.x,ghost.y);
 		if(this.time%4>=(4*ghost.speed*path.speedModifier)){return;}
@@ -558,32 +548,28 @@ function Model(){
 		/** Eat */
 		if(ghost.status!=FRIGHTENED && ghost.status!=PENNED && this.puckman.isEaten==false && ghost.x==this.puckman.x && ghost.y==this.puckman.y){
 			this.puckman.isEaten=true;
-			ghost.setTarget(this.maze.getTarget(ghostTargets[ghost.name]));
-			ghost.direction=NONE;
-			console.log(ghost.name+"["+ghost.status+"]"+"->EAT PUCKMAN");
+			//console.log(ghost.name+"["+ghost.status+"]"+"->EAT PUCKMAN");
 		}
 		
 		/** Move */
-		if(ghost.offset.x==TILE_SIZE/2 && ghost.offset.y==TILE_SIZE/2){
-			ghost.direction=this.chooseGhostDirection(ghost);
-		}
-		if(ghost.offset.add(offsets[ghost.direction])){
-			ghost.moveTo(path.connections[ghost.direction]);
-		}
-				
+		var multiplicator=1;
+		if(ghost.isEaten){multiplicator=TILE_SIZE/4;}
+		if(ghost.offset.x==TILE_SIZE/2 && ghost.offset.y==TILE_SIZE/2){ghost.direction=this.chooseGhostDirection(ghost);}
+		if(ghost.offset.add(offsets[ghost.direction],multiplicator)){ghost.moveTo(path.connections[ghost.direction]);}			
+		
 		/** Target Change */
 		if(ghost.x==ghost.target.x && ghost.y==ghost.target.y){
 			
-			console.log(ghost.name+"["+ghost.status+"]"+"->TARGET REACHED["+ghost.target.x+","+ghost.target.y+","+ghost.target.name+"]");
+			//console.log(ghost.name+"["+ghost.status+"]"+"->TARGET REACHED["+ghost.target.x+","+ghost.target.y+","+ghost.target.name+"]");
 			
 			if(ghost.target.name==ghostPens[ghost.name]){
 				this.respawnGhost(ghost);
 			}else if(ghost.target.name==PEN_EXIT){
-				if(ghost.isEaten){this.penGhost(ghost);}
-				else{this.ghostScatter(ghost);}
+				if(ghost.isEaten){this.changeGhostStatus(ghost,PENNED);}
+				else{this.changeGhostStatus(ghost,SCATTER);}
 			}
 
-			console.log(ghost.name+"->NEW TARGET["+ghost.target.x+","+ghost.target.y+","+ghost.target.name+"]");	
+			//console.log(ghost.name+"->NEW TARGET["+ghost.target.x+","+ghost.target.y+","+ghost.target.name+"]");	
 		}
 	};
 };
@@ -702,7 +688,7 @@ function View(model,controller){
 	};
 	
 	this.drawStatus=function(){
-		var textFont  = "120% Lucida Sans Unicode";
+		var textFont  = "1.2em Lucida Sans Unicode";
 		var fontColor =  "#ffffff";
 
 		this.statusContext.font = textFont;
@@ -739,8 +725,8 @@ function View(model,controller){
 		
 		/**GHOST STATUS*/
 		this.statusContext.beginPath();
-		this.statusContext.font = "50% Lucida Sans Unicode";
-		var gic=1;
+		this.statusContext.font = "0.5em Lucida Sans Unicode";
+		var gic=2;
 		for(var gi in this.model.ghosts){
 			var ghost = this.model.ghosts[gi];
 			this.statusContext.textAlign = "left";
@@ -762,7 +748,7 @@ function View(model,controller){
 
 			if(!ball.isEaten){
 				var spriteName="BALL";
-				if(ball.isSuper){spriteName="SUPERBALL";}	
+				if(ball.isEnergizer){spriteName="SUPERBALL";}	
 				
 				if(this.model.time % 20 < 15){spriteName=spriteName+ANIM1;		
 				}else{spriteName=spriteName+ANIM2;}
@@ -791,10 +777,6 @@ function View(model,controller){
 		var puckman = this.model.puckman;
 		
 		var spriteName="PUCKMAN_";
-
-		if(puckman.isSuper){
-			spriteName=spriteName+"S_";
-		}
 		
 		if(this.model.time % 20 < 10 || puckman.isEaten){
 			spriteName=spriteName+"NONE";		
@@ -924,31 +906,6 @@ function View(model,controller){
 			x++;
 		}
 		y++;
-		
-		x=0;
-		//SUPER PUCKMAN
-		paccolor = "rgba(255,255,100,1)";
-		
-		for(var di in directions){
-			var pacAngleDirection=angleDirections[directions[di]];
-			var pacmouthAngle = (directions[di]==NONE)?0:60;
-			var pacradius = TILE_SIZE*this.scale*0.8;
-			var pacstartAngle = (Math.PI / 180) * ((pacmouthAngle/2)+pacAngleDirection);
-			var pacendAngle   = (Math.PI / 180) * ((360 - (pacmouthAngle/2))+pacAngleDirection);
-			
-			spriteContext.fillStyle = paccolor;
-			spriteContext.beginPath();
-			spriteContext.moveTo(x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2,y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2);
-			spriteContext.arc(x*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2, y*ACTOR_SIZE*this.scale+ACTOR_SIZE*this.scale/2, pacradius, pacstartAngle, pacendAngle, false);
-			spriteContext.fill();
-			spriteContext.closePath();			
-
-			var spriteName="PUCKMAN_S_"+directions[di];
-			this.sprites[spriteName]=new Sprite(spriteCanvas,x*ACTOR_SIZE*this.scale, y*ACTOR_SIZE*this.scale, ACTOR_SIZE*this.scale, ACTOR_SIZE*this.scale);
-			
-			x++;
-		}
-		y++;
 				
 		x=0;
 		//GHOST
@@ -982,26 +939,27 @@ function View(model,controller){
 					//EYES
 					spriteContext.beginPath();
 					spriteContext.fillStyle = "#000000";
+					var eyesSize=ghostradius/6;
 					switch(directions[di]){
 						case NONE:
-							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/8, 0, (Math.PI / 180) * (360), false);
-							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/8, 0, (Math.PI / 180) * (360), false);
+							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, eyesSize, 0, (Math.PI / 180) * (360), false);
+							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, eyesSize, 0, (Math.PI / 180) * (360), false);
 							break;
 						case LEFT:
-							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3-ghostradius/8, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/8, 0, (Math.PI / 180) * (360), false);
-							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3-ghostradius/8, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/8, 0, (Math.PI / 180) * (360), false);
+							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3-ghostradius/8, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, eyesSize, 0, (Math.PI / 180) * (360), false);
+							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3-ghostradius/8, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, eyesSize, 0, (Math.PI / 180) * (360), false);
 							break;
 						case RIGHT:
-							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3+ghostradius/8, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/8, 0, (Math.PI / 180) * (360), false);
-							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3+ghostradius/8, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/8, 0, (Math.PI / 180) * (360), false);
+							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3+ghostradius/8, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, eyesSize, 0, (Math.PI / 180) * (360), false);
+							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3+ghostradius/8, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, eyesSize, 0, (Math.PI / 180) * (360), false);
 							break;
 						case UP:
-							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale-ghostradius/8, ghostradius/8, 0, (Math.PI / 180) * (360), false);
-							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale-ghostradius/8, ghostradius/8, 0, (Math.PI / 180) * (360), false);
+							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale-ghostradius/8, eyesSize, 0, (Math.PI / 180) * (360), false);
+							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale-ghostradius/8, eyesSize, 0, (Math.PI / 180) * (360), false);
 							break;
 						case DOWN:
-							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale+ghostradius/8, ghostradius/8, 0, (Math.PI / 180) * (360), false);
-							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale+ghostradius/8, ghostradius/8, 0, (Math.PI / 180) * (360), false);
+							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale+ghostradius/8, eyesSize, 0, (Math.PI / 180) * (360), false);
+							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale+ghostradius/8, eyesSize, 0, (Math.PI / 180) * (360), false);
 							break;
 					}	
 					spriteContext.fill();
@@ -1090,15 +1048,24 @@ function View(model,controller){
 			var mouthWidthLips=ghostradius/1.5;
 			switch(ghostSpriteAnims[ai]){
 				case ANIM1:
-					begMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/14;
-					endMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/14;
-					mouthWidthIn=ghostradius/3;
-					mouthWidthLips=ghostradius/1.5;
+//					begMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/20;
+//					endMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/20;
+//					mouthWidthIn=ghostradius/3;
+//					mouthWidthLips=ghostradius/1.5;
+					begMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/6;
+					endMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/6;
+					mouthWidthIn=ghostradius/20;
+					mouthWidthLips=ghostradius/3;
+
 					break;
 				case ANIM2:
+//					begMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/2;
+//					endMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/2;
+//					mouthWidthIn=ghostradius/3;
+//					mouthWidthLips=ghostradius/1.5;
 					begMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/4;
 					endMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/4;
-					mouthWidthIn=ghostradius/2.5;
+					mouthWidthIn=ghostradius/3;
 					mouthWidthLips=ghostradius/1.5;
 					break;
 			}			
