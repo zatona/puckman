@@ -13,8 +13,8 @@
  * DONE Puckman life count
  * DONE Ghost pen should be close for active ghost
  * DONE Display score 
- * TODO Add periodical change of ghost status
- * TODO Add general level configuration for speeds and status change
+ * DONE Add periodical change of ghost status
+ * TODO Add general level configuration for speeds and ghost status change
  * TODO Add food bonus
  * TODO implement Blinky moves
  * TODO implement Pinky moves
@@ -43,7 +43,9 @@ var ghostNames=new Array(BLINKY,PINKY,INKY,CLYDE);
 var offsets={NONE:new Offset(0,0),LEFT:new Offset(-1,0),RIGHT:new Offset(1,0),UP:new Offset(0,-1),DOWN:new Offset(0,1)};
 
 var TILE_SIZE=8;
+var HALF_TILE_SIZE=TILE_SIZE/2;
 
+var frameRate=100;
 
 /**
  * Game
@@ -215,15 +217,18 @@ function Model(){
 	this.time=0;
 	this.frightTime=-1;
 	
-	var cycles=[7,20,7,20,5,-1];
-	var cycleIndex=0;
-	var cycleTime=0;
-	var cycleStatus=SCATTER;
+	this.cycles=[7,20,7,20,5,-1];
+	this.cycleIndex=0;
+	this.cycleTime=0;
+	this.cycleStatus=SCATTER;	
+	
+	this.ballCounter=0;
 	
 	this.maze;
 	this.balls;
 	this.ghosts;
 	this.puckman;
+	this.highscore=0;
 	
 	/** Observable Pattern */
 	this.view=null;
@@ -326,7 +331,21 @@ function Model(){
 	};
 	
 	this.start=function(){
+		if(this.puckman.life==0){
+			this.time=0;
+			this.frightTime=-1;
+			this.puckman.isEaten=true;
+			this.puckman.life=3;
+			this.puckman.score=0;
+			this.ballCounter=0;
+			for(var bi in this.balls){
+				var ball=this.balls[bi];
+				ball.isEaten=false;
+			}
+		}
+
 		if(this.puckman.isEaten && this.puckman.life>0){
+			
 			/** Respawn Puckman*/
 			this.respawnPuckman(this.puckman);
 			
@@ -337,6 +356,11 @@ function Model(){
 				ghost.x=ghost.startPosition.x;
 				ghost.y=ghost.startPosition.y;
 			};
+			
+			/** Initialize Cycle*/
+			this.cycleIndex=0;
+			this.cycleTime=0;
+			this.cycleStatus=SCATTER;
 			
 			/** Initialize Ghost status timer*/
 			this.ghostStatus=SCATTER;
@@ -399,6 +423,7 @@ function Model(){
 			this.ballCounter++;
 		}
 		food.isEaten=true;
+		if(this.puckman.score>this.highscore){this.highscore=this.puckman.score;}
 	};
 	
 	this.eatGhost=function(ghost){
@@ -431,8 +456,8 @@ function Model(){
 			
 			/**Cycle change*/
 			if(this.cycleTime==0){
-				this.cycleTime=this.cycle[++cycleIndex];
-				if(this.cycleStatus==SCATTER){this.cycleStatus=CHASE;}else{this.cycleStatus=SCATTER;}
+				if(this.cycleIndex>0&&this.cycleStatus==SCATTER){this.cycleStatus=CHASE;}else{this.cycleStatus=SCATTER;}
+				this.cycleTime=this.cycles[this.cycleIndex++]*frameRate;
 			}else if(this.cycleTime>0){
 				this.cycleTime--;
 			}
@@ -442,7 +467,7 @@ function Model(){
 				if(this.frightTime==0){
 					for(var gi in this.ghosts){
 						var ghost=this.ghosts[gi];
-						if(ghost.status==FRIGHTENED){
+						if(ghost.status==FRIGHTENED&&ghost.isEaten==false){
 							this.changeGhostStatus(ghost, this.cycleStatus);
 						}
 					}
@@ -451,7 +476,7 @@ function Model(){
 			}else{
 				for(var gi in this.ghosts){
 					var ghost=this.ghosts[gi];
-					this.changeGhostStatus(ghost, this.cycleStatus);
+					if(ghost.status!=PENNED&&ghost.isEaten==false){this.changeGhostStatus(ghost, this.cycleStatus);}
 				}				
 			}
 			
@@ -469,7 +494,7 @@ function Model(){
 		if(!this.puckman.free || this.puckman.isEaten){return;}
 		
 		/** Speed */
-		if(this.time%TILE_SIZE>=(TILE_SIZE*this.puckman.speed)){return;}
+		if(this.time%HALF_TILE_SIZE>=(HALF_TILE_SIZE*this.puckman.speed)){return;}
 				
 		/** Eat Ball */
 		var ball=this.balls[this.puckman.x+":"+this.puckman.y];
@@ -556,10 +581,10 @@ function Model(){
 				
 		/** Speed */
 		var path=this.maze.getElem(ghost.x,ghost.y);
-		if(this.time%TILE_SIZE>=(TILE_SIZE*ghost.speed*path.speedModifier)){return;}
+		if(this.time%HALF_TILE_SIZE>=(HALF_TILE_SIZE*ghost.speed*path.speedModifier)){return;}
 		
 		/** Eat */
-		if(ghost.status!=FRIGHTENED && ghost.status!=PENNED && this.puckman.isEaten==false && ghost.x==this.puckman.x && ghost.y==this.puckman.y){
+		if(ghost.isEaten==false && ghost.status!=FRIGHTENED && ghost.status!=PENNED && this.puckman.isEaten==false && ghost.x==this.puckman.x && ghost.y==this.puckman.y){
 			this.puckman.isEaten=true;
 			//console.log(ghost.name+"["+ghost.status+"]"+"->EAT PUCKMAN");
 		}
@@ -714,21 +739,21 @@ function View(model,controller){
 		this.statusContext.beginPath();
 		this.statusContext.textAlign = "center";
 		this.statusContext.fillText("HIGH SCORE", this.model.maze.xmax*TILE_SIZE/2*this.scale,(TILE_SIZE+TILE_SIZE/3)*this.scale);
+		this.statusContext.closePath();	
+		this.statusContext.beginPath();
+		this.statusContext.textAlign = "center";
+		this.statusContext.fillText(this.model.highscore, (this.model.maze.xmax*TILE_SIZE/2)*this.scale,(2*TILE_SIZE+TILE_SIZE/3)*this.scale);
 		this.statusContext.closePath();									
 
 		/**PLAYER 1 SCORE*/
 		if(this.model.time % 20 < 10){
 			this.statusContext.beginPath();
 			this.statusContext.textAlign = "center";
-			this.statusContext.font = textFont;
-			this.statusContext.fillStyle = fontColor;
 			this.statusContext.fillText("1UP", (this.model.maze.xmax*TILE_SIZE/4)*this.scale,(TILE_SIZE+TILE_SIZE/3)*this.scale);
 			this.statusContext.closePath();									
 		}
 		this.statusContext.beginPath();
 		this.statusContext.textAlign = "right";
-		this.statusContext.font = textFont;
-		this.statusContext.fillStyle = fontColor;
 		this.statusContext.fillText(this.model.puckman.score,  (this.model.maze.xmax*TILE_SIZE/4)*this.scale,(2*TILE_SIZE+TILE_SIZE/3)*this.scale);
 		this.statusContext.closePath();									
 
@@ -740,16 +765,16 @@ function View(model,controller){
 		this.statusContext.closePath();									
 		
 		/**GHOST STATUS*/
-		this.statusContext.beginPath();
-		this.statusContext.font = "0.5em Lucida Sans Unicode";
-		var gic=2;
-		for(var gi in this.model.ghosts){
-			var ghost = this.model.ghosts[gi];
-			this.statusContext.textAlign = "left";
-			this.statusContext.fillText(gi+":"+ghost.status+"["+ghost.target.name+"]", (2*this.model.maze.xmax*TILE_SIZE/3*this.scale),gic*(TILE_SIZE/2)*this.scale);
-			gic++;
-		}
-		this.statusContext.closePath();											
+//		this.statusContext.beginPath();
+//		this.statusContext.font = "0.5em Lucida Sans Unicode";
+//		var gic=2;
+//		for(var gi in this.model.ghosts){
+//			var ghost = this.model.ghosts[gi];
+//			this.statusContext.textAlign = "left";
+//			this.statusContext.fillText(gi+":"+ghost.status+"["+ghost.target.name+"]", (2*this.model.maze.xmax*TILE_SIZE/3*this.scale),gic*(TILE_SIZE/2)*this.scale);
+//			gic++;
+//		}
+//		this.statusContext.closePath();											
 	}
 	
 	this.drawActors=function(){
@@ -1064,10 +1089,6 @@ function View(model,controller){
 			var mouthWidthLips=ghostradius/1.5;
 			switch(ghostSpriteAnims[ai]){
 				case ANIM1:
-//					begMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/20;
-//					endMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/20;
-//					mouthWidthIn=ghostradius/3;
-//					mouthWidthLips=ghostradius/1.5;
 					begMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/6;
 					endMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/6;
 					mouthWidthIn=ghostradius/20;
@@ -1075,10 +1096,6 @@ function View(model,controller){
 
 					break;
 				case ANIM2:
-//					begMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/2;
-//					endMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/2;
-//					mouthWidthIn=ghostradius/3;
-//					mouthWidthLips=ghostradius/1.5;
 					begMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/4;
 					endMouthx=(x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/4;
 					mouthWidthIn=ghostradius/3;
