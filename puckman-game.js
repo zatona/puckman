@@ -41,11 +41,9 @@ var directions= new Array(NONE,UP,DOWN,LEFT,RIGHT);
 var ghostNames=new Array(BLINKY,PINKY,INKY,CLYDE);
 
 var offsets={NONE:new Offset(0,0),LEFT:new Offset(-1,0),RIGHT:new Offset(1,0),UP:new Offset(0,-1),DOWN:new Offset(0,1)};
-var eatenOffsets={NONE:new Offset(0,0),LEFT:new Offset(-1*TILE_SIZE/2,0),RIGHT:new Offset(1*TILE_SIZE/2,0),UP:new Offset(0,-1*TILE_SIZE/2),DOWN:new Offset(0,1*TILE_SIZE/2)};
 
 var TILE_SIZE=8;
-var ACTOR_SIZE=TILE_SIZE*2;
-var ANIM1="1",ANIM2="2";
+
 
 /**
  * Game
@@ -178,19 +176,19 @@ function Ghost(position,name){
 	this.setTarget=function(target){this.target=target;};
 	this.setStatus=function(status){this.status=status;};
 };
-/** Blinky aka “Akabei” or “Macky”*/
+/** Blinky aka "Akabei" or "Macky"*/
 function Blinky(position){
 	Ghost.call(this,position,BLINKY);
 };
-/** Pinky aka “Micky”*/
+/** Pinky aka "Micky"*/
 function Pinky(position){
 	Ghost.call(this,position,PINKY);
 };
-/** Inky aka “Aosuke” or “Mucky”*/
+/** Inky aka "Aosuke" or "Mucky"*/
 function Inky(position){
 	Ghost.call(this,position,INKY);
 };
-/** Clyde aka “Guzuta” or “Mocky”*/
+/** Clyde aka "Guzuta" or "Mocky"*/
 function Clyde(position){
 	Ghost.call(this,position,CLYDE);
 };
@@ -211,16 +209,17 @@ function Model(){
 	var OppositeDirections = {NONE:NONE,LEFT:RIGHT,RIGHT:LEFT,UP:DOWN,DOWN:UP};
 	var ghostDirections= new Array(UP,LEFT,DOWN,RIGHT);
 	var ghostTargets = {BLINKY:BLINKY_TARGET,PINKY:PINKY_TARGET,INKY:INKY_TARGET,CLYDE:CLYDE_TARGET};
-	var ghostStarts = {BLINKY:BLINKY_START,PINKY:PINKY_START,INKY:INKY_START,CLYDE:CLYDE_START};
 	var ghostPens = {BLINKY:PINKY_START,PINKY:PINKY_START,INKY:INKY_START,CLYDE:CLYDE_START};
 	var ghostSpeeds = {PENNED:0.3,SCATTER:0.5,CHASE:0.8,FRIGHTENED:0.5};	
-	var ghostStatusCycle = new Array(7,20,7,20,5,20,5,100000);
 	
 	this.time=0;
 	this.frightTime=-1;
-	this.ghostStatus=SCATTER;
-	this.ghostStatusTime=0;
-	this.ghostStatusCnt=0;
+	
+	var cycles=[7,20,7,20,5,-1];
+	var cycleIndex=0;
+	var cycleTime=0;
+	var cycleStatus=SCATTER;
+	
 	this.maze;
 	this.balls;
 	this.ghosts;
@@ -379,7 +378,7 @@ function Model(){
 		if(status==SCATTER){ghost.setTarget(this.maze.getTarget(ghostTargets[ghost.name]));}
 		else if(status==CHASE){ghost.setTarget(this.puckman);}
 		else if(status==PENNED){ghost.setTarget(this.maze.getTarget(ghostPens[ghost.name]));}
-	}
+	};
 	
 	this.frightGhost=function(ghost){
 		if(!ghost.isEaten&&ghost.status!=PENNED){
@@ -391,7 +390,7 @@ function Model(){
 	this.puckmanFright=function(){
 		for(var gi in this.ghosts){this.frightGhost(this.ghosts[gi]);}
 		this.frightTime=300;
-	}
+	};
 	
 	this.puckmanEat=function(food){
 		this.puckman.eat(food);
@@ -400,7 +399,7 @@ function Model(){
 			this.ballCounter++;
 		}
 		food.isEaten=true;
-	}
+	};
 	
 	this.eatGhost=function(ghost){
 		this.puckmanEat(ghost);
@@ -429,17 +428,31 @@ function Model(){
 		this.ghostStatusTime++;
 		
 		if(!this.puckman.isEaten && this.puckman.life>0){
+			
+			/**Cycle change*/
+			if(this.cycleTime==0){
+				this.cycleTime=this.cycle[++cycleIndex];
+				if(this.cycleStatus==SCATTER){this.cycleStatus=CHASE;}else{this.cycleStatus=SCATTER;}
+			}else if(this.cycleTime>0){
+				this.cycleTime--;
+			}
+			
 			/** Ghost Status change*/
 			if(this.frightTime>=0){
 				if(this.frightTime==0){
 					for(var gi in this.ghosts){
 						var ghost=this.ghosts[gi];
 						if(ghost.status==FRIGHTENED){
-							this.changeGhostStatus(ghost, SCATTER);
+							this.changeGhostStatus(ghost, this.cycleStatus);
 						}
 					}
 				}
 				this.frightTime--;				
+			}else{
+				for(var gi in this.ghosts){
+					var ghost=this.ghosts[gi];
+					this.changeGhostStatus(ghost, this.cycleStatus);
+				}				
 			}
 			
 			/** Move */
@@ -456,7 +469,7 @@ function Model(){
 		if(!this.puckman.free || this.puckman.isEaten){return;}
 		
 		/** Speed */
-		if(this.time%4>=(4*this.puckman.speed)){return;}
+		if(this.time%TILE_SIZE>=(TILE_SIZE*this.puckman.speed)){return;}
 				
 		/** Eat Ball */
 		var ball=this.balls[this.puckman.x+":"+this.puckman.y];
@@ -543,7 +556,7 @@ function Model(){
 				
 		/** Speed */
 		var path=this.maze.getElem(ghost.x,ghost.y);
-		if(this.time%4>=(4*ghost.speed*path.speedModifier)){return;}
+		if(this.time%TILE_SIZE>=(TILE_SIZE*ghost.speed*path.speedModifier)){return;}
 		
 		/** Eat */
 		if(ghost.status!=FRIGHTENED && ghost.status!=PENNED && this.puckman.isEaten==false && ghost.x==this.puckman.x && ghost.y==this.puckman.y){
@@ -578,6 +591,9 @@ function Model(){
  * View
  */
 function View(model,controller){
+	var ACTOR_SIZE=TILE_SIZE*2;
+	var ANIM1="1",ANIM2="2";
+	
 	view=this;
 	this.model=model;
 	this.model.addView(this);
