@@ -208,7 +208,7 @@ function Puckman(position){
  * Model
  */
 function Model(){
-	var OppositeDirections = {NONE:NONE,LEFT:RIGHT,RIGHT:LEFT,UP:DOWN,DOWN:UP};
+	var oppositeDirections = {NONE:NONE,LEFT:RIGHT,RIGHT:LEFT,UP:DOWN,DOWN:UP};
 	var ghostDirections= new Array(UP,LEFT,DOWN,RIGHT);
 	var ghostTargets = {BLINKY:BLINKY_TARGET,PINKY:PINKY_TARGET,INKY:INKY_TARGET,CLYDE:CLYDE_TARGET};
 	var ghostPens = {BLINKY:PINKY_START,PINKY:PINKY_START,INKY:INKY_START,CLYDE:CLYDE_START};
@@ -396,12 +396,14 @@ function Model(){
 	};
 
 	this.changeGhostStatus=function(ghost,status){
-		ghost.setStatus(status);
-		ghost.direction==OppositeDirections[ghost.direction];
-		ghost.speed=ghostSpeeds[ghost.status];
-		if(status==SCATTER){ghost.setTarget(this.maze.getTarget(ghostTargets[ghost.name]));}
-		else if(status==CHASE){ghost.setTarget(this.puckman);}
-		else if(status==PENNED){ghost.setTarget(this.maze.getTarget(ghostPens[ghost.name]));}
+		if(ghost.status!=status){
+			if(status!=PENNED && ghost.status!=PENNED){ghost.direction=oppositeDirections[ghost.direction];}
+			ghost.setStatus(status);
+			ghost.speed=ghostSpeeds[ghost.status];
+			if(status==SCATTER){ghost.setTarget(this.maze.getTarget(ghostTargets[ghost.name]));}
+			else if(status==CHASE){ghost.setTarget(this.puckman);}
+			else if(status==PENNED){ghost.setTarget(this.maze.getTarget(ghostPens[ghost.name]));}
+		}
 	};
 	
 	this.frightGhost=function(ghost){
@@ -542,7 +544,7 @@ function Model(){
 			var distance=10000;
 			//var distanceEstimation="";
 			for(gd in ghostDirections){
-				if(!(ghost.direction==OppositeDirections[ghostDirections[gd]]) && !(path.isGhostRestrictionZone&&ghostDirections[gd]==UP&&!ghost.status!=FRIGHTENED)){
+				if(!(ghost.direction==oppositeDirections[ghostDirections[gd]]) && !(path.isGhostRestrictionZone&&ghostDirections[gd]==UP&&!ghost.status!=FRIGHTENED)){
 					var dPath = path.connections[ghostDirections[gd]];
 					if(dPath!=undefined && (!(dPath instanceof Door) || ghost.status==PENNED)){
 						var dDistance=dPath.getDistance(ghost.target);
@@ -554,9 +556,9 @@ function Model(){
 			//console.log("["+ghost.name+"] estimate "+distanceEstimation+" choose="+direction);
 		}else{
 			if(path.connections[ghost.direction]==undefined){
-				direction=OppositeDirections[direction];
+				direction=oppositeDirections[direction];
 				for(gd in ghostDirections){
-					if(!(ghost.direction==OppositeDirections[ghostDirections[gd]])
+					if(!(ghost.direction==oppositeDirections[ghostDirections[gd]])
 						&& path.connections[ghostDirections[gd]]!=undefined){
 						return ghostDirections[gd];
 					}
@@ -573,9 +575,9 @@ function Model(){
 		/** Block */
 		if(!ghost.free){
 			if(ghost.name==BLINKY){ghost.free=true;ghost.direction=LEFT;}
-			else if(ghost.name==PINKY && this.ballCounter>1){ghost.free=true;;ghost.direction=UP;}
-			else if(ghost.name==INKY && this.ballCounter>30){ghost.free=true;;ghost.direction=RIGHT;}				
-			else if(ghost.name==CLYDE && this.ballCounter>60){ghost.free=true;;ghost.direction=LEFT;}
+			else if(ghost.name==PINKY && this.ballCounter>1){ghost.free=true;ghost.direction=UP;}
+			else if(ghost.name==INKY && this.ballCounter>30){ghost.free=true;ghost.direction=RIGHT;}				
+			else if(ghost.name==CLYDE && this.ballCounter>60){ghost.free=true;ghost.direction=LEFT;}
 			else{return;}
 		}
 				
