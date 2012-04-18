@@ -40,8 +40,6 @@ var	BLINKY="BLINKY",PINKY="PINKY",INKY="INKY",CLYDE="CLYDE",
 var directions= new Array(NONE,UP,DOWN,LEFT,RIGHT);
 var ghostNames=new Array(BLINKY,PINKY,INKY,CLYDE);
 
-var offsets={NONE:new Offset(0,0),LEFT:new Offset(-1,0),RIGHT:new Offset(1,0),UP:new Offset(0,-1),DOWN:new Offset(0,1)};
-
 var TILE_SIZE=8;
 var HALF_TILE_SIZE=TILE_SIZE/2;
 
@@ -72,10 +70,10 @@ function Maze(xmax,ymax){
 	this.getElem=function(x,y){return this.elems[y][x];};
 	this.getElemByDirection=function(x,y,direction){
 		switch(direction){
-		case LEFT: 	if(x==0){return this.getElem(this.xmax-1,y);}else{return this.getElem(x-1,y);}
-		case RIGHT: if(x==this.xmax-1){return this.getElem(0,y);}else{return this.getElem(x+1,y);}
-		case UP: 	if(y==0){return this.getElem(x,this.ymax-1);}else{return this.getElem(x,y-1);}
-		case DOWN: 	if(y==this.ymax-1){return this.getElem(x,0);}else{return this.getElem(x,y+1);}
+			case LEFT: 	if(x==0){return this.getElem(this.xmax-1,y);}else{return this.getElem(x-1,y);}
+			case RIGHT: if(x==this.xmax-1){return this.getElem(0,y);}else{return this.getElem(x+1,y);}
+			case UP: 	if(y==0){return this.getElem(x,this.ymax-1);}else{return this.getElem(x,y-1);}
+			case DOWN: 	if(y==this.ymax-1){return this.getElem(x,0);}else{return this.getElem(x,y+1);}
 		}
 		return this.getElem(x,y);
 	};
@@ -122,7 +120,21 @@ function Position(x,y){
 	this.y=y;
 	/** Calculate distance with position */
 	this.getDistance=function(position){return Math.pow(Math.abs(this.x-position.x),2)+Math.pow(Math.abs(this.y-position.y),2);};
+	this.add=function(frontOffset,sideOffset,direction){
+		var xOffset=0;
+		var yOffset=0;
+		switch(direction){
+			case RIGHT:xOffset=frontOffset;yOffset=sideOffset;
+			case LEFT:xOffset=-1*frontOffset;yOffset=-1*sideOffset;
+			case UP:xOffset=-1*sideOffset;yOffset=-1*frontOffset;
+			case DOWN:xOffset=sideOffset;yOffset=frontOffset;
+		}
+		return new Position(this.x+xOffset,this.y+yOffset);
+	};
 };
+var offsets={NONE:new Offset(0,0),LEFT:new Offset(-1,0),RIGHT:new Offset(1,0),UP:new Offset(0,-1),DOWN:new Offset(0,1)};
+
+
 
 function Path(x,y){
 	Position.call(this, x, y);
@@ -177,6 +189,7 @@ function Ghost(position,name){
 	this.target=new Target(0,0,NONE);
 	this.setTarget=function(target){this.target=target;};
 	this.setStatus=function(status){this.status=status;};
+	this.aim=this.target;
 };
 /** Blinky aka "Akabei" or "Macky"*/
 function Blinky(position){
@@ -213,7 +226,8 @@ function Model(){
 	var ghostTargets = {BLINKY:BLINKY_TARGET,PINKY:PINKY_TARGET,INKY:INKY_TARGET,CLYDE:CLYDE_TARGET};
 	var ghostPens = {BLINKY:PINKY_START,PINKY:PINKY_START,INKY:INKY_START,CLYDE:CLYDE_START};
 	var ghostSpeeds = {PENNED:0.3,SCATTER:0.5,CHASE:0.8,FRIGHTENED:0.5};	
-	
+	var offsets={NONE:new Offset(0,0),LEFT:new Offset(-1,0),RIGHT:new Offset(1,0),UP:new Offset(0,-1),DOWN:new Offset(0,1)};
+
 	this.time=0;
 	this.frightTime=-1;
 	
@@ -536,18 +550,38 @@ function Model(){
 		}
 	};
 	
+	this.resolveGhostTargetPosition=function(ghost){
+		if(ghost.name==BLINKY||ghost.target.name!=PUCKMAN){
+			return ghost.target;
+		}else{
+			if(ghost.name==PINKY){
+				return this.puckman.add(4,0,this.puckman.direction);
+			}else if(ghost.name==INKY){
+				var blinky=this.ghosts[BLINKY];
+				var aheadPuckman=this.puckman.add(2,0,this.puckman.direction);
+				return new Position(aheadPuckman.x+(-1*(blinky.x-aheadPuckman.x)),aheadPuckman.y+(-1*(blinky.y-aheadPuckman.y)));
+			}else if(ghost.name==CLYDE){
+				if(this.puckman.getDistance(ghost)>64){return this.puckman;}
+				else{return this.maze.getTarget(CLYDE_TARGET);}
+			}
+		}
+		return ghost.target;
+	};
+	
 	this.chooseGhostDirection=function(ghost){
 		var direction=ghost.direction;
 		var path=this.maze.getElem(ghost.x,ghost.y);
 		
 		if(path.isIntersection){
 			var distance=10000;
+			var targetPosition=this.resolveGhostTargetPosition(ghost);
+			ghost.aim=targetPosition;
 			//var distanceEstimation="";
 			for(gd in ghostDirections){
 				if(!(ghost.direction==oppositeDirections[ghostDirections[gd]]) && !(path.isGhostRestrictionZone&&ghostDirections[gd]==UP&&!ghost.status!=FRIGHTENED)){
 					var dPath = path.connections[ghostDirections[gd]];
 					if(dPath!=undefined && (!(dPath instanceof Door) || ghost.status==PENNED)){
-						var dDistance=dPath.getDistance(ghost.target);
+						var dDistance=dPath.getDistance(targetPosition);
 						//distanceEstimation=distanceEstimation+"|["+ghostDirections[gd]+"]="+dDistance;
 						if(dDistance<distance){distance=dDistance;direction=ghostDirections[gd];}
 					}
@@ -801,6 +835,17 @@ function View(model,controller){
 		}
 	};
 
+	this.drawGhostAim=function(ghost){
+		var ghostColors={BLINKY:"255,64,64",PINKY:"255,128,255",INKY:"128,255,255",CLYDE:"255,128,64"};
+		var ghostColor="rgba("+ghostColors[ghost.name]+",0.4)";
+
+		this.actorContext.beginPath();
+		this.actorContext.rect(ghost.aim.x*TILE_SIZE*this.scale, ghost.aim.y*TILE_SIZE*this.scale, TILE_SIZE*this.scale, TILE_SIZE*this.scale);
+		this.actorContext.fillStyle = ghostColor;
+		this.actorContext.fill();
+		this.actorContext.closePath();									
+	};
+	
 	this.drawGhosts=function(){
 		for(var gi in this.model.ghosts){
 			var ghost = this.model.ghosts[gi];
@@ -812,7 +857,9 @@ function View(model,controller){
 			}else{spriteName=spriteName+ANIM2;}
 			if(!ghost.isEaten&&ghost.status!=FRIGHTENED){spriteName=spriteName+"_"+ghost.direction;}
 			
-			this.drawSprite(this.actorContext, spriteName, (ghost.x*TILE_SIZE+ghost.offset.x-ACTOR_SIZE/2)*this.scale, (ghost.y*TILE_SIZE+ghost.offset.y-ACTOR_SIZE/2)*this.scale);		
+			this.drawSprite(this.actorContext, spriteName, (ghost.x*TILE_SIZE+ghost.offset.x-ACTOR_SIZE/2)*this.scale, (ghost.y*TILE_SIZE+ghost.offset.y-ACTOR_SIZE/2)*this.scale);
+			
+			this.drawGhostAim(ghost);
 		}
 	};
 
