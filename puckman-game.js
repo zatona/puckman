@@ -16,10 +16,11 @@
  * DONE Add periodical change of ghost status
  * TODO Add general level configuration for speeds and ghost status change
  * TODO Add food bonus
- * TODO implement Blinky moves
- * TODO implement Pinky moves
- * TODO implement Inky moves
- * TODO implement Clide moves
+ * DONE implement Blinky moves
+ * DONE implement Pinky moves
+ * DONE implement Inky moves
+ * DONE implement Clide moves
+ * TODO implement Elroy
  * TODO Ghost wait in Pen going up and down
  * TODO Ghost go out of Pen by the middle of the door
  * TODO Store high-score
@@ -124,17 +125,15 @@ function Position(x,y){
 		var xOffset=0;
 		var yOffset=0;
 		switch(direction){
-			case RIGHT:xOffset=frontOffset;yOffset=sideOffset;
-			case LEFT:xOffset=-1*frontOffset;yOffset=-1*sideOffset;
-			case UP:xOffset=-1*sideOffset;yOffset=-1*frontOffset;
-			case DOWN:xOffset=sideOffset;yOffset=frontOffset;
+			case RIGHT:xOffset=frontOffset;yOffset=sideOffset;break;
+			case LEFT:xOffset=-1*frontOffset;yOffset=-1*sideOffset;break;
+			case UP:xOffset=-1*sideOffset;yOffset=-1*frontOffset;break;
+			case DOWN:xOffset=sideOffset;yOffset=frontOffset;break;
 		}
 		return new Position(this.x+xOffset,this.y+yOffset);
 	};
 };
 var offsets={NONE:new Offset(0,0),LEFT:new Offset(-1,0),RIGHT:new Offset(1,0),UP:new Offset(0,-1),DOWN:new Offset(0,1)};
-
-
 
 function Path(x,y){
 	Position.call(this, x, y);
