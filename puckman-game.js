@@ -31,7 +31,7 @@
 
 var	NONE="NONE",LEFT="LEFT",RIGHT="RIGHT",UP="UP",DOWN="DOWN";
 
-var	PENNED="PENNED",SCATTER="SCATTER",CHASE="CHASE",FRIGHTENED="FRIGHTENED";
+var	PENNED="PENNED",RELEASED="RELEASED",SCATTER="SCATTER",CHASE="CHASE",FRIGHTENED="FRIGHTENED",RUNTOPEN="RUNTOPEN";
 
 var	BLINKY="BLINKY",PINKY="PINKY",INKY="INKY",CLYDE="CLYDE",
 	PUCKMAN="PUCKMAN",PUCKMAN_START="PUCKMAN_START",PEN_EXIT="PEN_EXIT",
@@ -79,8 +79,8 @@ function Maze(xmax,ymax){
 		return this.getElem(x,y);
 	};
 
-	this.putTarget=function(target){
-		this.targets[target.name]=target;
+	this.putTarget=function(name,target){
+		this.targets[name]=target;
 	};
 	this.getTarget=function(name){return this.targets[name];};
 };
@@ -121,6 +121,7 @@ function Position(x,y){
 	this.y=y;
 	/** Calculate distance with position */
 	this.getDistance=function(position){return Math.pow(Math.abs(this.x-position.x),2)+Math.pow(Math.abs(this.y-position.y),2);};
+	/** Add front and side offset depending on direction*/
 	this.add=function(frontOffset,sideOffset,direction){
 		var xOffset=0;
 		var yOffset=0;
@@ -132,8 +133,9 @@ function Position(x,y){
 		}
 		return new Position(this.x+xOffset,this.y+yOffset);
 	};
+	/** Compare with other position*/
+	this.isOver=function(position){return this.x=position.x&&this.y==position.y;};
 };
-var offsets={NONE:new Offset(0,0),LEFT:new Offset(-1,0),RIGHT:new Offset(1,0),UP:new Offset(0,-1),DOWN:new Offset(0,1)};
 
 function Path(x,y){
 	Position.call(this, x, y);
@@ -166,14 +168,9 @@ function Ball(position,isEnergizer){
 	this.calorie=this.isEnergizer?3:1;
 };
 
-function Target(position,name){
-	Position.call(this, position.x, position.y);
-	this.name=name;
-}
-
 function Actor(position,name){
-	Target.call(this,position,name);
 	Food.call(this);
+	this.name=name;
 	this.offset=new Offset(TILE_SIZE,TILE_SIZE/2);
 	this.startPosition=position;
 	this.direction=NONE;
@@ -185,27 +182,16 @@ function Actor(position,name){
 function Ghost(position,name){
 	Actor.call(this,position,name);
 	this.status=SCATTER;
-	this.target=new Target(0,0,NONE);
-	this.setTarget=function(target){this.target=target;};
-	this.setStatus=function(status){this.status=status;};
-	this.aim=this.target;
+	this.target=new Position(0,0);
 };
 /** Blinky aka "Akabei" or "Macky"*/
-function Blinky(position){
-	Ghost.call(this,position,BLINKY);
-};
+function Blinky(position){Ghost.call(this,position,BLINKY);};
 /** Pinky aka "Micky"*/
-function Pinky(position){
-	Ghost.call(this,position,PINKY);
-};
+function Pinky(position){Ghost.call(this,position,PINKY);};
 /** Inky aka "Aosuke" or "Mucky"*/
-function Inky(position){
-	Ghost.call(this,position,INKY);
-};
+function Inky(position){Ghost.call(this,position,INKY);};
 /** Clyde aka "Guzuta" or "Mocky"*/
-function Clyde(position){
-	Ghost.call(this,position,CLYDE);
-};
+function Clyde(position){Ghost.call(this,position,CLYDE);};
 
 function Puckman(position){
 	Actor.call(this,position,PUCKMAN);
@@ -224,7 +210,8 @@ function Model(){
 	var ghostDirections= new Array(UP,LEFT,DOWN,RIGHT);
 	var ghostTargets = {BLINKY:BLINKY_TARGET,PINKY:PINKY_TARGET,INKY:INKY_TARGET,CLYDE:CLYDE_TARGET};
 	var ghostPens = {BLINKY:PINKY_START,PINKY:PINKY_START,INKY:INKY_START,CLYDE:CLYDE_START};
-	var ghostSpeeds = {PENNED:0.3,SCATTER:0.5,CHASE:0.8,FRIGHTENED:0.5};	
+	var ghostSpeeds = {PENNED:0.3,RELEASED:0.3,SCATTER:0.5,CHASE:0.8,FRIGHTENED:0.5,RUNTOPEN:1};	
+	var ghostReleasedDirection = {BLINKY:LEFT,PINKY:UP,INKY:RIGHT,CLYDE:LEFT};	
 	var offsets={NONE:new Offset(0,0),LEFT:new Offset(-1,0),RIGHT:new Offset(1,0),UP:new Offset(0,-1),DOWN:new Offset(0,1)};
 
 	this.time=0;
@@ -296,28 +283,28 @@ function Model(){
 						this.balls[path.x+":"+path.y]=new Ball(path,true);
 					}else if(modelTextChar=="m"){
 						this.puckman=new Puckman(path);
-						this.maze.putTarget(new Target(path,PUCKMAN_START));
+						this.maze.putTarget(PUCKMAN_START,path);
 					}else if(modelTextChar=="b"){
 						this.ghosts[BLINKY]=new Blinky(path);
-						this.maze.putTarget(new Target(path,PEN_EXIT));
+						this.maze.putTarget(PEN_EXIT,path);
 					}else if(modelTextChar=="p"){
 						this.ghosts[PINKY]=new Pinky(path);
-						this.maze.putTarget(new Target(path,PINKY_START));
+						this.maze.putTarget(PINKY_START,path);
 					}else if(modelTextChar=="i"){
 						this.ghosts[INKY]=new Inky(path);
-						this.maze.putTarget(new Target(path,INKY_START));
-						this.maze.putTarget(new Target(path,BLINKY_START));
+						this.maze.putTarget(INKY_START,path);
+						this.maze.putTarget(BLINKY_START,path);
 					}else if(modelTextChar=="c"){
 						this.ghosts[CLYDE]=new Clyde(path);
-						this.maze.putTarget(new Target(path,CLYDE_START));
+						this.maze.putTarget(CLYDE_START,path);
 					}else if(modelTextChar=="B"){
-						this.maze.putTarget(new Target(path,BLINKY_TARGET));
+						this.maze.putTarget(BLINKY_TARGET,path);
 					}else if(modelTextChar=="P"){
-						this.maze.putTarget(new Target(path,PINKY_TARGET));
+						this.maze.putTarget(PINKY_TARGET,path);
 					}else if(modelTextChar=="I"){
-						this.maze.putTarget(new Target(path,INKY_TARGET));
+						this.maze.putTarget(INKY_TARGET,path);
 					}else if(modelTextChar=="C"){
-						this.maze.putTarget(new Target(path,CLYDE_TARGET));
+						this.maze.putTarget(CLYDE_TARGET,path);
 					}
 				}				
 			}
@@ -405,25 +392,20 @@ function Model(){
 		ghost.direction=NONE;
 		ghost.free=false;
 		ghost.setStatus(PENNED);
-		ghost.setTarget(this.maze.getTarget(PEN_EXIT));
 	};
 
 	this.changeGhostStatus=function(ghost,status){
 		if(ghost.status!=status){
+			if(status==RUNTOPEN){ghost.offset.x=TILE_SIZE/2;ghost.offset.y=TILE_SIZE/2;}
 			if(status!=PENNED && ghost.status!=PENNED){ghost.direction=oppositeDirections[ghost.direction];}
+			if(status==RELEASED){ghost.direction=ghostReleasedDirection[ghost.name];}
 			ghost.setStatus(status);
 			ghost.speed=ghostSpeeds[ghost.status];
-			if(status==SCATTER){ghost.setTarget(this.maze.getTarget(ghostTargets[ghost.name]));}
-			else if(status==CHASE){ghost.setTarget(this.puckman);}
-			else if(status==PENNED){ghost.setTarget(this.maze.getTarget(ghostPens[ghost.name]));}
 		}
 	};
 	
 	this.frightGhost=function(ghost){
-		if(!ghost.isEaten&&ghost.status!=PENNED){
-			this.changeGhostStatus(ghost,FRIGHTENED);
-			ghost.setTarget(this.maze.getTarget(ghostTargets[ghost.name]));
-		}
+		if(ghost.status==CHASE||ghost.status==SCATTER){this.changeGhostStatus(ghost,FRIGHTENED);}
 	};
 
 	this.puckmanFright=function(){
@@ -443,10 +425,7 @@ function Model(){
 	
 	this.eatGhost=function(ghost){
 		this.puckmanEat(ghost);
-		ghost.offset.x=TILE_SIZE/2;
-		ghost.offset.y=TILE_SIZE/2;
-		ghost.setTarget(this.maze.getTarget(PEN_EXIT));
-		ghost.speed=1;
+		this.changeGhostStatus(ghost,RUNTOPEN);
 	};
 	
 	/** 
@@ -482,16 +461,16 @@ function Model(){
 				if(this.frightTime==0){
 					for(var gi in this.ghosts){
 						var ghost=this.ghosts[gi];
-						if(ghost.status==FRIGHTENED&&ghost.isEaten==false){
-							this.changeGhostStatus(ghost, this.cycleStatus);
-						}
+						if(ghost.status==FRIGHTENED){this.changeGhostStatus(ghost, this.cycleStatus);}
 					}
 				}
 				this.frightTime--;				
 			}else{
 				for(var gi in this.ghosts){
 					var ghost=this.ghosts[gi];
-					if(ghost.status!=PENNED&&ghost.isEaten==false){this.changeGhostStatus(ghost, this.cycleStatus);}
+					if((ghost.status==SCATTER||ghost.status==CHASE)&&ghost.status!=this.cycleStatus){
+						this.changeGhostStatus(ghost, this.cycleStatus);
+					}
 				}				
 			}
 			
@@ -521,7 +500,7 @@ function Model(){
 		/** Eat Ghost */
 		for(var gi in this.ghosts){
 			var ghost=this.ghosts[gi];
-			if(ghost.status==FRIGHTENED && !ghost.isEaten && ghost.x==this.puckman.x && ghost.y==this.puckman.y){
+			if(ghost.status==FRIGHTENED && ghost.isOver(this.puckman)){
 				this.eatGhost(ghost);
 				return;
 			}
@@ -549,11 +528,17 @@ function Model(){
 		}
 	};
 	
-	this.resolveGhostTargetPosition=function(ghost){
-		if(ghost.name==BLINKY||ghost.target.name!=PUCKMAN){
-			return ghost.target;
-		}else{
+	this.resolveGhostTarget=function(ghost){
+		if(ghost.status==RUNTOPEN||ghost.status==RELEASED){
+			return this.maze.getTarget(PEN_EXIT);
+		}else if(ghost.status==PENNED){
+			return this.maze.getTarget(ghostPens[ghost.name]);
+		}else if(ghost.status==SCATTER){
+			return this.maze.getTarget(ghostTargets[ghost.name]);
+		}else if(ghost.status==CHASE){
 			if(ghost.name==PINKY){
+				return this.puckman;
+			}else if(ghost.name==PINKY){
 				return this.puckman.add(4,0,this.puckman.direction);
 			}else if(ghost.name==INKY){
 				var blinky=this.ghosts[BLINKY];
@@ -563,24 +548,24 @@ function Model(){
 				if(this.puckman.getDistance(ghost)>64){return this.puckman;}
 				else{return this.maze.getTarget(CLYDE_TARGET);}
 			}
-		}
-		return ghost.target;
+		}else if(ghost.status==FRIGHTENED){
+			return this.maze.getTarget(ghostPens[ghost.name]);
+		}			
 	};
-	
+
 	this.chooseGhostDirection=function(ghost){
 		var direction=ghost.direction;
 		var path=this.maze.getElem(ghost.x,ghost.y);
 		
 		if(path.isIntersection){
 			var distance=10000;
-			var targetPosition=this.resolveGhostTargetPosition(ghost);
-			ghost.aim=targetPosition;
+			ghost.target=this.resolveGhostTarget(ghost);
 			//var distanceEstimation="";
 			for(gd in ghostDirections){
 				if(!(ghost.direction==oppositeDirections[ghostDirections[gd]]) && !(path.isGhostRestrictionZone&&ghostDirections[gd]==UP&&!ghost.status!=FRIGHTENED)){
 					var dPath = path.connections[ghostDirections[gd]];
 					if(dPath!=undefined && (!(dPath instanceof Door) || ghost.status==PENNED)){
-						var dDistance=dPath.getDistance(targetPosition);
+						var dDistance=dPath.getDistance(ghost.target);
 						//distanceEstimation=distanceEstimation+"|["+ghostDirections[gd]+"]="+dDistance;
 						if(dDistance<distance){distance=dDistance;direction=ghostDirections[gd];}
 					}
@@ -605,12 +590,12 @@ function Model(){
 	this.moveGhost=function(name){
 		var ghost=this.ghosts[name];
 
-		/** Block */
-		if(!ghost.free){
-			if(ghost.name==BLINKY){ghost.free=true;ghost.direction=LEFT;}
-			else if(ghost.name==PINKY && this.ballCounter>1){ghost.free=true;ghost.direction=UP;}
-			else if(ghost.name==INKY && this.ballCounter>30){ghost.free=true;ghost.direction=RIGHT;}				
-			else if(ghost.name==CLYDE && this.ballCounter>60){ghost.free=true;ghost.direction=LEFT;}
+		/** Pen management*/
+		if(ghost.status==PENNED&&ghost.isEaten==false){
+			if(ghost.name==BLINKY){this.changeGhostStatus(ghost, RELEASED);}
+			else if(ghost.name==PINKY && this.ballCounter>1){this.changeGhostStatus(ghost, RELEASED);}
+			else if(ghost.name==INKY && this.ballCounter>30){this.changeGhostStatus(ghost, RELEASED);}				
+			else if(ghost.name==CLYDE && this.ballCounter>60){this.changeGhostStatus(ghost, RELEASED);}
 			else{return;}
 		}
 				
@@ -619,7 +604,7 @@ function Model(){
 		if(this.time%HALF_TILE_SIZE>=(HALF_TILE_SIZE*ghost.speed*path.speedModifier)){return;}
 		
 		/** Eat */
-		if(ghost.isEaten==false && ghost.status!=FRIGHTENED && ghost.status!=PENNED && this.puckman.isEaten==false && ghost.x==this.puckman.x && ghost.y==this.puckman.y){
+		if((ghost.status==SCATTER||ghost.status==CHASE)&&ghost.isOver(this.puckman)){
 			this.puckman.isEaten=true;
 			//console.log(ghost.name+"["+ghost.status+"]"+"->EAT PUCKMAN");
 		}
@@ -631,9 +616,13 @@ function Model(){
 		if(ghost.offset.add(offsets[ghost.direction],multiplicator)){ghost.moveTo(path.connections[ghost.direction]);}			
 		
 		/** Target Change */
-		if(ghost.x==ghost.target.x && ghost.y==ghost.target.y){
+		if(ghost.isOver(ghost.target)){
 			
 			//console.log(ghost.name+"["+ghost.status+"]"+"->TARGET REACHED["+ghost.target.x+","+ghost.target.y+","+ghost.target.name+"]");
+			
+			if(ghost.isEaten==false&&ghost.isOver(this.maze.getTarget(PEN_EXIT))){
+				this.changeGhostStatus(ghost,PENNED);
+			}
 			
 			if(ghost.target.name==ghostPens[ghost.name]){
 				this.respawnGhost(ghost);
@@ -667,6 +656,8 @@ function View(model,controller){
 	this.statusContext;
 	this.sprites;
 	
+	this.displayTarget=false;
+	
 	/** Frame trigger */
 	window.requestAnimFrame = (function(callback){
 		return window.requestAnimationFrame ||
@@ -681,11 +672,13 @@ function View(model,controller){
 	keyDirectionMap={37:LEFT,38:UP,39:RIGHT,40:DOWN};
 	function keyDownListener(evt){
 		var direction=keyDirectionMap[evt.keyCode];
-		//console.log("keyDownListener evt="+evt.keyCode+" direction="+direction);
+		console.log("keyDownListener evt="+evt.keyCode+" direction="+direction);
 		if(direction!=undefined){
 			view.controller.changePuckmanDirection(direction);
-		}else if(evt.keyCode==32){
+		}else if(evt.keyCode==32){/**SPACE*/
 			view.controller.start();
+		}else if(evt.keyCode==84){/**t*/
+			view.displayTarget=!view.displayTarget;
 		}
 	};
 	window.addEventListener('keydown',keyDownListener,true);
@@ -798,19 +791,7 @@ function View(model,controller){
 			this.drawSprite(this.statusContext, "PUCKMAN_LEFT",(il+1)*ACTOR_SIZE*this.scale, (this.model.maze.ymax*TILE_SIZE-ACTOR_SIZE-TILE_SIZE/5)*this.scale);	
 		}
 		this.statusContext.closePath();									
-		
-		/**GHOST STATUS*/
-//		this.statusContext.beginPath();
-//		this.statusContext.font = "0.5em Lucida Sans Unicode";
-//		var gic=2;
-//		for(var gi in this.model.ghosts){
-//			var ghost = this.model.ghosts[gi];
-//			this.statusContext.textAlign = "left";
-//			this.statusContext.fillText(gi+":"+ghost.status+"["+ghost.target.name+"]", (2*this.model.maze.xmax*TILE_SIZE/3*this.scale),gic*(TILE_SIZE/2)*this.scale);
-//			gic++;
-//		}
-//		this.statusContext.closePath();											
-	}
+	};
 	
 	this.drawActors=function(){
 		this.drawBalls();
@@ -834,12 +815,12 @@ function View(model,controller){
 		}
 	};
 
-	this.drawGhostAim=function(ghost){
+	this.drawGhostTarget=function(ghost){
 		var ghostColors={BLINKY:"255,64,64",PINKY:"255,128,255",INKY:"128,255,255",CLYDE:"255,128,64"};
 		var ghostColor="rgba("+ghostColors[ghost.name]+",0.4)";
 
 		this.actorContext.beginPath();
-		this.actorContext.rect(ghost.aim.x*TILE_SIZE*this.scale, ghost.aim.y*TILE_SIZE*this.scale, TILE_SIZE*this.scale, TILE_SIZE*this.scale);
+		this.actorContext.rect(ghost.target.x*TILE_SIZE*this.scale, ghost.target.y*TILE_SIZE*this.scale, TILE_SIZE*this.scale, TILE_SIZE*this.scale);
 		this.actorContext.fillStyle = ghostColor;
 		this.actorContext.fill();
 		this.actorContext.closePath();									
@@ -858,7 +839,7 @@ function View(model,controller){
 			
 			this.drawSprite(this.actorContext, spriteName, (ghost.x*TILE_SIZE+ghost.offset.x-ACTOR_SIZE/2)*this.scale, (ghost.y*TILE_SIZE+ghost.offset.y-ACTOR_SIZE/2)*this.scale);
 			
-			this.drawGhostAim(ghost);
+			if(this.displayTarget){this.drawGhostTarget(ghost);}
 		}
 	};
 
