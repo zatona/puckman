@@ -169,6 +169,7 @@ function Ball(position,isEnergizer){
 };
 
 function Actor(position,name){
+	Position.call(this,position.x,position.y);
 	Food.call(this);
 	this.name=name;
 	this.offset=new Offset(TILE_SIZE,TILE_SIZE/2);
@@ -391,7 +392,7 @@ function Model(){
 		ghost.calories=10;
 		ghost.direction=NONE;
 		ghost.free=false;
-		ghost.setStatus(PENNED);
+		ghost.status=PENNED;
 	};
 
 	this.changeGhostStatus=function(ghost,status){
@@ -399,7 +400,7 @@ function Model(){
 			if(status==RUNTOPEN){ghost.offset.x=TILE_SIZE/2;ghost.offset.y=TILE_SIZE/2;}
 			if(status!=PENNED && ghost.status!=PENNED){ghost.direction=oppositeDirections[ghost.direction];}
 			if(status==RELEASED){ghost.direction=ghostReleasedDirection[ghost.name];}
-			ghost.setStatus(status);
+			ghost.status=status;
 			ghost.speed=ghostSpeeds[ghost.status];
 		}
 	};
@@ -640,10 +641,11 @@ function Model(){
  * View
  */
 function View(model,controller){
+	view=this;
+	
 	var ACTOR_SIZE=TILE_SIZE*2;
 	var ANIM1="1",ANIM2="2";
-	
-	view=this;
+		
 	this.model=model;
 	this.model.addView(this);
 	this.controller=controller;
