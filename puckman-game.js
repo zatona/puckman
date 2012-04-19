@@ -30,7 +30,8 @@
  */
 
 var	NONE="NONE",LEFT="LEFT",RIGHT="RIGHT",UP="UP",DOWN="DOWN";
-var	PENNED="PENNED",RELEASED="RELEASED",SCATTER="SCATTER",CHASE="CHASE",FRIGHTENED="FRIGHTENED",RUNTOPEN="RUNTOPEN",RESPAWN="RESPAWN";
+var	PENNED="PENNED",RELEASED="RELEASED",SCATTER="SCATTER",CHASE="CHASE",FRIGHTENED="FRIGHTENED",RUNTOPEN="RUNTOPEN",RESPAWN="RESPAWN",
+	NORMAL="NORMAL",SUPER="SUPER";
 var	BLINKY="BLINKY",PINKY="PINKY",INKY="INKY",CLYDE="CLYDE",PUCKMAN="PUCKMAN";
 var PUCKMAN_START="PUCKMAN_START",PEN_EXIT="PEN_EXIT",
 	BLINKY_START="BLINKY_START",PINKY_START="PINKY_START",INKY_START="INKY_START",CLYDE_START="CLYDE_START",
@@ -173,13 +174,13 @@ function Actor(position,name){
 	this.direction=NONE;
 	this.speed=0;
 	this.free=false;
+	this.status;
 	this.moveTo=function(position){this.x=position.x;this.y=position.y;};
 };
 
 function Ghost(position,name){
 	Actor.call(this,position,name);
-	this.status=SCATTER;
-	this.target=new Position(0,0);
+	this.target=new Target(new Position(0,0),"NONE");
 };
 /** Blinky aka "Akabei" or "Macky"*/
 function Blinky(position){Ghost.call(this,position,BLINKY);};
@@ -193,7 +194,6 @@ function Clyde(position){Ghost.call(this,position,CLYDE);};
 function Puckman(position){
 	Actor.call(this,position,PUCKMAN);
 	this.isEaten=true;
-	this.speed=0.8;
 	this.food=null;
 	this.life=3;
 	this.eat=function(food){if(!food.isEaten){this.food=food;this.score=this.score+food.score;}};
@@ -207,8 +207,8 @@ function Model(){
 	var ghostDirections= new Array(UP,LEFT,DOWN,RIGHT);
 	var ghostTargets = {BLINKY:BLINKY_TARGET,PINKY:PINKY_TARGET,INKY:INKY_TARGET,CLYDE:CLYDE_TARGET};
 	var ghostPens = {BLINKY:PINKY_START,PINKY:PINKY_START,INKY:INKY_START,CLYDE:CLYDE_START};
-	var ghostSpeeds = {PENNED:0.3,RELEASED:0.3,SCATTER:0.5,CHASE:0.8,FRIGHTENED:0.5,RUNTOPEN:1,RESPAWN:0};	
 	var ghostReleasedDirection = {BLINKY:LEFT,PINKY:UP,INKY:RIGHT,CLYDE:LEFT};	
+	var speeds = {PENNED:0.3,RELEASED:0.3,SCATTER:0.5,CHASE:0.75,FRIGHTENED:0.5,RUNTOPEN:1,RESPAWN:0,NORMAL:0.8,SUPER:0.9};	
 	var offsets={NONE:new Offset(0,0),LEFT:new Offset(-1,0),RIGHT:new Offset(1,0),UP:new Offset(0,-1),DOWN:new Offset(0,1)};
 
 	this.time=0;
@@ -285,14 +285,14 @@ function Model(){
 						this.ghosts[BLINKY]=new Blinky(path);
 						this.maze.putTarget(new Target(path,PEN_EXIT));
 					}else if(modelTextChar=="p"){
-						//this.ghosts[PINKY]=new Pinky(path);
+						this.ghosts[PINKY]=new Pinky(path);
 						this.maze.putTarget(new Target(path,PINKY_START));
 					}else if(modelTextChar=="i"){
-						//this.ghosts[INKY]=new Inky(path);
+						this.ghosts[INKY]=new Inky(path);
 						this.maze.putTarget(new Target(path,INKY_START));
 						this.maze.putTarget(new Target(path,BLINKY_START));
 					}else if(modelTextChar=="c"){
-						//this.ghosts[CLYDE]=new Clyde(path);
+						this.ghosts[CLYDE]=new Clyde(path);
 						this.maze.putTarget(new Target(path,CLYDE_START));
 					}else if(modelTextChar=="B"){
 						this.maze.putTarget(new Target(path,BLINKY_TARGET));
@@ -343,7 +343,7 @@ function Model(){
 
 		if(this.puckman.isEaten && this.puckman.life>0){
 			/** Respawn Puckman*/
-			this.respawnPuckman(this.puckman);
+			this.changePuckmanStatus(this.puckman,RESPAWN);
 			
 			/** Respawn Ghosts*/
 			for(var gi in this.ghosts){
@@ -367,34 +367,42 @@ function Model(){
 		}
 		return false;
 	};
-	
-	this.respawnPuckman=function(puckman){
-		puckman.x=puckman.startPosition.x;
-		puckman.y=puckman.startPosition.y;
-		puckman.offset=new Offset(TILE_SIZE,TILE_SIZE/2);
-		puckman.direction=NONE;
-		puckman.speed=0.8;
-		puckman.food=null;
-		puckman.isEaten=false;
-		puckman.free=true;
-		puckman.life=puckman.life-1;
-	};
+		
+	this.changePuckmanStatus=function(puckman,status){
+		if(status==RESPAWN){
+			puckman.x=puckman.startPosition.x;
+			puckman.y=puckman.startPosition.y;
+			puckman.offset=new Offset(TILE_SIZE,TILE_SIZE/2);
+			puckman.direction=NONE;
+			puckman.status=NORMAL;
+			puckman.food=null;
+			puckman.isEaten=false;
+			puckman.free=true;
+			puckman.life=puckman.life-1;	
+		}else if(status==SUPER){
+			puckman.status=SUPER;						
+		}else{
+			puckman.status=NORMAL;			
+		}
+		puckman.speed=speeds[puckman.status];
+	}
 	
 	this.changeGhostStatus=function(ghost,status){
 		if(ghost.status!=status){
+			//console.log("["+ghost.name+"] change status to "+status);
 			if(status==RESPAWN){
 				ghost.offset=new Offset(TILE_SIZE,TILE_SIZE/2);
 				ghost.isEaten=false;
 				ghost.score=100;
 				ghost.calories=10;
 				ghost.direction=NONE;
-				ghost.free=false;				
+				ghost.free=false;
 			}
 			if(status==RUNTOPEN){ghost.offset.x=TILE_SIZE/2;ghost.offset.y=TILE_SIZE/2;}
 			if(ghost.status!=RELEASED&&ghost.status!=RUNTOPEN){ghost.direction=oppositeDirections[ghost.direction];}
 			if(status==RELEASED){ghost.direction=ghostReleasedDirection[ghost.name];}
 			ghost.status=status;
-			ghost.speed=ghostSpeeds[ghost.status];
+			ghost.speed=speeds[ghost.status];
 		}
 	};
 	
@@ -406,10 +414,10 @@ function Model(){
 		this.frightTime=300;
 	};
 	
-	this.eatFood=function(food){
+	this.eat=function(food){
 		this.puckman.eat(food);
 		if(food instanceof Ball){
-			if(food.isEnergizer){this.frightGhosts();}
+			if(food.isEnergizer){this.frightGhosts();this.changePuckmanStatus(this.puckman,SUPER);}
 			this.ballCounter++;
 		}
 		food.isEaten=true;
@@ -417,7 +425,7 @@ function Model(){
 	};
 	
 	this.eatGhost=function(ghost){
-		this.eatFood(ghost);
+		this.eat(ghost);
 		this.changeGhostStatus(ghost,RUNTOPEN);
 	};
 	
@@ -469,7 +477,7 @@ function Model(){
 		/** Eat Ball */
 		var ball=this.balls[this.puckman.x+":"+this.puckman.y];
 		if(ball!=undefined && !ball.isEaten){
-			this.eatFood(ball);
+			this.eat(ball);
 			return;
 		}
 		
@@ -544,7 +552,7 @@ function Model(){
 			for(gd in ghostDirections){
 				if(!(ghost.direction==oppositeDirections[ghostDirections[gd]]) && !(path.isGhostRestrictionZone&&ghostDirections[gd]==UP&&!ghost.status!=FRIGHTENED)){
 					var dPath = path.connections[ghostDirections[gd]];
-					if(dPath!=undefined && (!(dPath instanceof Door) || ghost.status==PENNED)){
+					if(dPath!=undefined && (!(dPath instanceof Door) || ghost.status==PENNED || ghost.status==RELEASED)){
 						var dDistance=dPath.getDistance(ghost.target);
 						//distanceEstimation=distanceEstimation+"|["+ghostDirections[gd]+"]="+dDistance;
 						if(dDistance<distance){distance=dDistance;direction=ghostDirections[gd];}
@@ -580,12 +588,12 @@ function Model(){
 		}
 		
 		/** Status */
-		if(ghost.status==FRIGHTENED&&this.frightTime==0){this.changeGhostStatus(ghost, this.cycleStatus);}
-		else if((ghost.status==SCATTER||ghost.status==CHASE)&&ghost.status!=this.cycleStatus){this.changeGhostStatus(ghost, this.cycleStatus);}
+		if(ghost.status==FRIGHTENED){if(this.frightTime==0){this.changeGhostStatus(ghost, this.cycleStatus);}}
+		else if(ghost.status==SCATTER||ghost.status==CHASE){if(ghost.status!=this.cycleStatus){this.changeGhostStatus(ghost, this.cycleStatus);}}
 		else if(ghost.target!=null && ghost.isOver(ghost.target)){
-			if(ghost.status==RELEASED){this.changeGhostStatus(ghost, this.cycleStatus);}
-			else if(ghost.status==RUNTOPEN){this.changeGhostStatus(ghost,PENNED);}
-			else if(ghost.status==PENNED){this.changeGhostStatus(ghost,RESPAWN);}
+			if(ghost.status==RELEASED&&ghost.target.name==PEN_EXIT){this.changeGhostStatus(ghost, this.cycleStatus);}
+			else if(ghost.status==RUNTOPEN&&ghost.target.name==PEN_EXIT){this.changeGhostStatus(ghost,PENNED);}
+			else if(ghost.status==PENNED&&ghost.target.name==ghostPens[ghost.name]){this.changeGhostStatus(ghost,RESPAWN);}
 		}			
 		
 		/** Speed */
@@ -643,7 +651,7 @@ function View(model,controller){
 	keyDirectionMap={37:LEFT,38:UP,39:RIGHT,40:DOWN};
 	function keyDownListener(evt){
 		var direction=keyDirectionMap[evt.keyCode];
-		console.log("keyDownListener evt="+evt.keyCode+" direction="+direction);
+		//console.log("keyDownListener evt="+evt.keyCode+" direction="+direction);
 		if(direction!=undefined){
 			view.controller.changePuckmanDirection(direction);
 		}else if(evt.keyCode==32){/**SPACE*/
