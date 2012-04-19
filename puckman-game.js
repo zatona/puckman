@@ -30,6 +30,7 @@
  */
 
 var	NONE="NONE",LEFT="LEFT",RIGHT="RIGHT",UP="UP",DOWN="DOWN";
+//var	NONE=0,LEFT=1,RIGHT=2,UP=3,DOWN=4;
 var	PENNED="PENNED",RELEASED="RELEASED",SCATTER="SCATTER",CHASE="CHASE",FRIGHTENED="FRIGHTENED",RUNTOPEN="RUNTOPEN",RESPAWN="RESPAWN",
 	NORMAL="NORMAL",SUPER="SUPER";
 var	BLINKY="BLINKY",PINKY="PINKY",INKY="INKY",CLYDE="CLYDE",PUCKMAN="PUCKMAN";
@@ -196,7 +197,6 @@ function Puckman(position){
 	this.isEaten=true;
 	this.food=null;
 	this.life=3;
-	this.eat=function(food){if(!food.isEaten){this.food=food;this.score=this.score+food.score;}};
 };
 
 /**
@@ -367,7 +367,35 @@ function Model(){
 		}
 		return false;
 	};
+	
+	/**
+	 * Animation loop 
+	 */
+	this.animate=function(inputDirection){
+		/** Time count */
+		this.time++;
 		
+		if(!this.puckman.isEaten && this.puckman.life>0){
+			this.statusTime++;
+			if(this.frightTime>0){this.frightTime--;}	
+			
+			/**Cycle change*/
+			if(this.cycleTime==0){
+				if(this.cycleIndex>0&&this.cycleStatus==SCATTER){this.cycleStatus=CHASE;}else{this.cycleStatus=SCATTER;}
+				this.cycleTime=this.cycles[this.cycleIndex++]*frameRate;
+			}else if(this.cycleTime>0){
+				this.cycleTime--;
+			}
+						
+			/** Move */
+			this.movePuckman(inputDirection);
+			for(var gi in this.ghosts){this.moveGhost(gi);}
+		}
+		
+		/** Update views */
+		this.updateView();
+	};
+	
 	this.changePuckmanStatus=function(puckman,status){
 		if(status==RESPAWN){
 			puckman.x=puckman.startPosition.x;
@@ -406,7 +434,7 @@ function Model(){
 		}
 	};
 	
-	this.frightGhosts=function(){
+	this.fright=function(){
 		for(var gi in this.ghosts){
 			var ghost=this.ghosts[gi];
 			if(ghost.status==CHASE||ghost.status==SCATTER){this.changeGhostStatus(ghost,FRIGHTENED);}
@@ -415,58 +443,20 @@ function Model(){
 	};
 	
 	this.eat=function(food){
-		this.puckman.eat(food);
 		if(food instanceof Ball){
-			if(food.isEnergizer){this.frightGhosts();this.changePuckmanStatus(this.puckman,SUPER);}
+			if(food.isEnergizer){this.fright();this.changePuckmanStatus(this.puckman,SUPER);}
 			this.ballCounter++;
 		}
-		food.isEaten=true;
+		if(!food.isEaten){this.puckman.food=food;this.puckman.score+=food.score;}
 		if(this.puckman.score>this.highscore){this.highscore=this.puckman.score;}
+		food.isEaten=true;
 	};
 	
 	this.eatGhost=function(ghost){
 		this.eat(ghost);
 		this.changeGhostStatus(ghost,RUNTOPEN);
 	};
-	
-	/** 
-	 * Game loop :
-	 * * start
-	 *   * init or respawn actors
-	 * * init turn
-	 *   * change actor status
-	 * * puckman 
-	 *    * eat food
-	 *    * move
-	 * * ghost
-	 *    * eat
-	 *    * move
-	*/
-	this.animate=function(inputDirection){
-		/** Time count */
-		this.time++;
 		
-		if(!this.puckman.isEaten && this.puckman.life>0){
-			this.statusTime++;
-			if(this.frightTime>0){this.frightTime--;}	
-			
-			/**Cycle change*/
-			if(this.cycleTime==0){
-				if(this.cycleIndex>0&&this.cycleStatus==SCATTER){this.cycleStatus=CHASE;}else{this.cycleStatus=SCATTER;}
-				this.cycleTime=this.cycles[this.cycleIndex++]*frameRate;
-			}else if(this.cycleTime>0){
-				this.cycleTime--;
-			}
-						
-			/** Move */
-			this.movePuckman(inputDirection);
-			for(var gi in this.ghosts){this.moveGhost(gi);}
-		}
-		
-		/** Update views */
-		this.updateView();
-	};
-	
 	this.movePuckman=function(direction){
 		/** Block */
 		if(!this.puckman.free || this.puckman.isEaten){return;}
@@ -767,7 +757,7 @@ function View(model,controller){
 		/**PLAYER LIFE*/
 		this.statusContext.beginPath();
 		for(var il=0;il<this.model.puckman.life;il++){
-			this.drawSprite(this.statusContext, "PUCKMAN_LEFT",(il+1)*ACTOR_SIZE*this.scale, (this.model.maze.ymax*TILE_SIZE-ACTOR_SIZE-TILE_SIZE/5)*this.scale);	
+			this.drawSprite(this.statusContext, "PUCKMAN_"+LEFT,(il+1)*ACTOR_SIZE*this.scale, (this.model.maze.ymax*TILE_SIZE-ACTOR_SIZE-TILE_SIZE/5)*this.scale);	
 		}
 		this.statusContext.closePath();									
 	};
@@ -810,11 +800,12 @@ function View(model,controller){
 			var ghost = this.model.ghosts[gi];
 
 			var spriteName=ghost.name;
+			var isFrighten=ghost.status==FRIGHTENED&&(this.model.frightTime>80||this.model.time % 20 < 10);
 			if(ghost.isEaten){spriteName="GHOST_EATEN";				
-			}else if(ghost.status==FRIGHTENED){spriteName="GHOST_FRIGHTENED";}
+			}else if(isFrighten){spriteName="GHOST_"+FRIGHTENED;}
 			if(this.model.time % 20 < 10){spriteName=spriteName+ANIM1;
 			}else{spriteName=spriteName+ANIM2;}
-			if(!ghost.isEaten&&ghost.status!=FRIGHTENED){spriteName=spriteName+"_"+ghost.direction;}
+			if(!ghost.isEaten&&!isFrighten){spriteName=spriteName+"_"+ghost.direction;}
 			
 			this.drawSprite(this.actorContext, spriteName, (ghost.x*TILE_SIZE+ghost.offset.x-ACTOR_SIZE/2)*this.scale, (ghost.y*TILE_SIZE+ghost.offset.y-ACTOR_SIZE/2)*this.scale);
 			
@@ -828,7 +819,7 @@ function View(model,controller){
 		var spriteName="PUCKMAN_";
 		
 		if(this.model.time % 20 < 10 || puckman.isEaten){
-			spriteName=spriteName+"NONE";		
+			spriteName=spriteName+NONE;		
 		}else{
 			spriteName=spriteName+puckman.direction;
 		}
@@ -1153,7 +1144,7 @@ function View(model,controller){
 			spriteContext.fill();
 			spriteContext.closePath();
 			
-			var spriteName="GHOST_FRIGHTENED"+ghostSpriteAnims[ai];
+			var spriteName="GHOST_"+FRIGHTENED+ghostSpriteAnims[ai];
 			this.sprites[spriteName]=new Sprite(spriteCanvas,x*ACTOR_SIZE*this.scale, y*ACTOR_SIZE*this.scale, ACTOR_SIZE*this.scale, ACTOR_SIZE*this.scale);
 
 			y++;
