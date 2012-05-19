@@ -14,13 +14,14 @@
  * DONE Ghost pen should be close for active ghost
  * DONE Display score 
  * DONE Add periodical change of ghost status
- * TODO Add general level configuration for speeds and ghost status change
- * TODO Add food bonus
+ * DONE Add food multiplicator
  * DONE implement Blinky moves
  * DONE implement Pinky moves
  * DONE implement Inky moves
  * DONE implement Clide moves
- * TODO implement Elroy
+ * DONE implement Elroy
+ * TODO Add general level configuration for speeds and ghost status change
+ * TODO Add fruits
  * TODO Ghost wait in Pen going up and down
  * TODO Ghost go out of Pen by the middle of the door
  * TODO Store high-score
@@ -32,7 +33,6 @@
 window.onload = function(){new Game();};
 
 var	NONE="NONE",LEFT="LEFT",RIGHT="RIGHT",UP="UP",DOWN="DOWN";
-//var	NONE=0,LEFT=1,RIGHT=2,UP=3,DOWN=4;
 var	PENNED="PENNED",RELEASED="RELEASED",SCATTER="SCATTER",CHASE="CHASE",FRIGHTENED="FRIGHTENED",RUNTOPEN="RUNTOPEN",RESPAWN="RESPAWN",
 	NORMAL="NORMAL",SUPER="SUPER";
 var	BLINKY="BLINKY",PINKY="PINKY",INKY="INKY",CLYDE="CLYDE",PUCKMAN="PUCKMAN";
@@ -165,7 +165,7 @@ function Ball(position,isEnergizer){
 	Position.call(this, position.x, position.y);
 	Food.call(this);
 	this.isEnergizer=isEnergizer;
-	this.score=this.isEnergizer?20:10;
+	this.score=this.isEnergizer?50:10;
 	this.calorie=this.isEnergizer?3:1;
 };
 
@@ -183,7 +183,8 @@ function Actor(position,name){
 
 function Ghost(position,name){
 	Actor.call(this,position,name);
-	this.target=new Target(new Position(0,0),"NONE");
+	this.target=new Target(new Position(0,0),NONE);
+	this.elroy=0;
 };
 /** Blinky aka "Akabei" or "Macky"*/
 function Blinky(position){Ghost.call(this,position,BLINKY);};
@@ -198,7 +199,8 @@ function Puckman(position){
 	Actor.call(this,position,PUCKMAN);
 	this.isEaten=true;
 	this.food=null;
-	this.life=3;
+	this.life=0;
+	this.bonus=0;
 };
 
 /**
@@ -212,7 +214,9 @@ function Model(){
 	var ghostReleasedDirection = {BLINKY:LEFT,PINKY:UP,INKY:RIGHT,CLYDE:LEFT};	
 	var speeds = {PENNED:0.3,RELEASED:0.3,SCATTER:0.5,CHASE:0.75,FRIGHTENED:0.5,RUNTOPEN:1,RESPAWN:0,NORMAL:0.8,SUPER:0.9};	
 	var offsets={NONE:new Offset(0,0),LEFT:new Offset(-1,0),RIGHT:new Offset(1,0),UP:new Offset(0,-1),DOWN:new Offset(0,1)};
-
+	var elroySpeeds = new Array(0,0.8,0.9);
+	var elroysBallLeft = new Array(0,20,10);
+	
 	this.time=0;
 	this.frightTime=-1;
 	
@@ -221,7 +225,8 @@ function Model(){
 	this.cycleTime=0;
 	this.cycleStatus=SCATTER;	
 	
-	this.ballCounter=0;
+	this.ballLeft=0;
+	this.ballMax=0;
 	
 	this.maze;
 	this.balls;
@@ -255,7 +260,7 @@ function Model(){
 		modelTextLines = modelText.split(/\r\n|\n/);
 		this.maze=new Maze(modelTextLines[0].length,modelTextLines.length);
 		this.balls=new Array();
-		this.ballCounter=0;
+		this.ballLeft=0;
 		this.ghosts=new Array();
 		for(var iy=0;iy<this.maze.ymax;iy++){
 			for(var ix=0;ix<this.maze.xmax;ix++){
@@ -336,11 +341,13 @@ function Model(){
 			this.puckman.isEaten=true;
 			this.puckman.life=3;
 			this.puckman.score=0;
-			this.ballCounter=0;
+			this.ballLeft=0;
 			for(var bi in this.balls){
 				var ball=this.balls[bi];
 				ball.isEaten=false;
+				this.ballLeft++;
 			}
+			this.ballMax=this.ballLeft;
 		}
 
 		if(this.puckman.isEaten && this.puckman.life>0){
@@ -408,11 +415,13 @@ function Model(){
 			puckman.food=null;
 			puckman.isEaten=false;
 			puckman.free=true;
-			puckman.life=puckman.life-1;	
+			puckman.life=puckman.life-1;
+			puckman.bonus=0;
 		}else if(status==SUPER){
-			puckman.status=SUPER;						
+			puckman.status=SUPER;
+			puckman.bonus=0;
 		}else{
-			puckman.status=NORMAL;			
+			puckman.status=NORMAL;
 		}
 		puckman.speed=speeds[puckman.status];
 	}
@@ -423,16 +432,17 @@ function Model(){
 			if(status==RESPAWN){
 				ghost.offset=new Offset(TILE_SIZE,TILE_SIZE/2);
 				ghost.isEaten=false;
-				ghost.score=100;
+				ghost.score=200;
 				ghost.calories=10;
 				ghost.direction=NONE;
 				ghost.free=false;
+				ghost.elroy=0;
 			}
 			if(status==RUNTOPEN){ghost.offset.x=TILE_SIZE/2;ghost.offset.y=TILE_SIZE/2;}
 			if(ghost.status!=RELEASED&&ghost.status!=RUNTOPEN){ghost.direction=oppositeDirections[ghost.direction];}
 			if(status==RELEASED){ghost.direction=ghostReleasedDirection[ghost.name];}
 			ghost.status=status;
-			ghost.speed=speeds[ghost.status];
+			if(!((ghost.status==SCATTER||ghost.status==CHASE)&&ghost.elroy>0)){ghost.speed=speeds[ghost.status];}
 		}
 	};
 	
@@ -444,12 +454,24 @@ function Model(){
 		this.frightTime=300;
 	};
 	
+	this.changeGhostElroy=function(ghost,elroy){
+		ghost.elroy=elroy;
+		ghost.speed=elroySpeeds[ghost.elroy];
+		console.log("["+ghost.name+"] change to Elroy"+elroy);
+	};
+	
 	this.eat=function(food){
+		var multiplicator=1;
 		if(food instanceof Ball){
 			if(food.isEnergizer){this.fright();this.changePuckmanStatus(this.puckman,SUPER);}
-			this.ballCounter++;
+			this.ballLeft--;
+		}else{
+			multiplicator=Math.pow(2,this.puckman.bonus);
+			this.puckman.bonus++;
 		}
-		if(!food.isEaten){this.puckman.food=food;this.puckman.score+=food.score;}
+		if(!food.isEaten){
+			this.puckman.food=food;this.puckman.score+=food.score*multiplicator;
+		}
 		if(this.puckman.score>this.highscore){this.highscore=this.puckman.score;}
 		food.isEaten=true;
 	};
@@ -514,7 +536,8 @@ function Model(){
 		}else if(ghost.status==PENNED){
 			return this.maze.getTarget(ghostPens[ghost.name]);
 		}else if(ghost.status==SCATTER){
-			return this.maze.getTarget(ghostTargets[ghost.name]);
+			if(ghost.name==BLINKY&&ghost.elroy>0){return this.puckman;}
+			else{return this.maze.getTarget(ghostTargets[ghost.name]);}
 		}else if(ghost.status==CHASE){
 			if(ghost.name==BLINKY){
 				return this.puckman;
@@ -573,10 +596,16 @@ function Model(){
 		/** Pen */
 		if(ghost.status==RESPAWN&&ghost.isEaten==false){
 			if(ghost.name==BLINKY){this.changeGhostStatus(ghost,RELEASED);}
-			else if(ghost.name==PINKY && this.ballCounter>1){this.changeGhostStatus(ghost,RELEASED);}
-			else if(ghost.name==INKY && this.ballCounter>30){this.changeGhostStatus(ghost,RELEASED);}				
-			else if(ghost.name==CLYDE && this.ballCounter>60){this.changeGhostStatus(ghost,RELEASED);}
+			else if(ghost.name==PINKY && this.ballLeft<this.ballMax){this.changeGhostStatus(ghost,RELEASED);}
+			else if(ghost.name==INKY && this.ballLeft<(this.ballMax-30)){this.changeGhostStatus(ghost,RELEASED);}				
+			else if(ghost.name==CLYDE && this.ballLeft<(this.ballMax-60)){this.changeGhostStatus(ghost,RELEASED);}
 			else{return;}
+		}
+		
+		/** Elroy */
+		if(ghost.name==BLINKY&&(ghost.status==SCATTER||ghost.status==CHASE)){
+			if((ghost.elroy<2)&&(this.ballLeft<elroysBallLeft[2])){this.changeGhostElroy(ghost,2);}
+			else if((ghost.elroy<1)&&(this.ballLeft<elroysBallLeft[1])){this.changeGhostElroy(ghost,1);}
 		}
 		
 		/** Status */
