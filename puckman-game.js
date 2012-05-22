@@ -217,6 +217,9 @@ function Model(){
 	var elroySpeeds = new Array(0,0.8,0.9);
 	var elroysBallLeft = new Array(0,20,10);
 	
+	this.level=0;
+	this.isCompleted=false;
+	
 	this.time=0;
 	this.frightTime=-1;
 	
@@ -241,9 +244,10 @@ function Model(){
 	
 	/**
 	 * Load Model from text
-	 * x : wall / d : door /  : path 
-	 * t: tunnel path(speed limit to ghost) /y : y path(up forbidden to ghost)  /z : z path(up forbidden to ghost with ball) 
-	 * . : ball / o : energizer
+	 * x : wall / d : door 
+	 *   : empty path 
+	 * t : tunnel path(speed limit to ghost) /y : restricted path(up forbidden to ghost)
+	 * z : restricted path(up forbidden to ghost with ball) / . : path with ball / o : path with energizer
 	 * m : Puckman
 	 * b : Blinky, and pen exit
 	 * p : Pinky
@@ -383,22 +387,26 @@ function Model(){
 	this.animate=function(inputDirection){
 		/** Time count */
 		this.time++;
-		
-		if(!this.puckman.isEaten && this.puckman.life>0){
-			this.statusTime++;
-			if(this.frightTime>0){this.frightTime--;}	
-			
-			/**Cycle change*/
-			if(this.cycleTime==0){
-				if(this.cycleIndex>0&&this.cycleStatus==SCATTER){this.cycleStatus=CHASE;}else{this.cycleStatus=SCATTER;}
-				this.cycleTime=this.cycles[this.cycleIndex++]*frameRate;
-			}else if(this.cycleTime>0){
-				this.cycleTime--;
+				
+		if(!this.puckman.isEaten && this.puckman.life>0 && !this.isCompleted){
+			if(this.ballLeft==0){
+				this.isCompleted=true;
+			}else{
+				this.statusTime++;
+				if(this.frightTime>0){this.frightTime--;}	
+				
+				/**Cycle change*/
+				if(this.cycleTime==0){
+					if(this.cycleIndex>0&&this.cycleStatus==SCATTER){this.cycleStatus=CHASE;}else{this.cycleStatus=SCATTER;}
+					this.cycleTime=this.cycles[this.cycleIndex++]*frameRate;
+				}else if(this.cycleTime>0){
+					this.cycleTime--;
+				}
+							
+				/** Move */
+				this.movePuckman(inputDirection);
+				for(var gi in this.ghosts){this.moveGhost(gi);}
 			}
-						
-			/** Move */
-			this.movePuckman(inputDirection);
-			for(var gi in this.ghosts){this.moveGhost(gi);}
 		}
 		
 		/** Update views */
