@@ -18,7 +18,7 @@
  * DONE implement Blinky moves
  * DONE implement Pinky moves
  * DONE implement Inky moves
- * DONE implement Clide moves
+ * DONE implement Clyde moves
  * DONE implement Elroy
  * TODO Add general level configuration for speeds and ghost status change
  * TODO Add fruits
