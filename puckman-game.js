@@ -432,7 +432,7 @@ function Model(){
 			puckman.status=NORMAL;
 		}
 		puckman.speed=speeds[puckman.status];
-	}
+	};
 	
 	this.changeGhostStatus=function(ghost,status){
 		if(ghost.status!=status){
@@ -1010,8 +1010,8 @@ function View(model,controller){
 					
 					spriteContext.beginPath();
 					spriteContext.fillStyle = "#FFFFFF";
-					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/4, 0, (Math.PI / 180) * (360), false);
-					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/4, 0, (Math.PI / 180) * (360), false);
+					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE/3)*this.scale, ghostradius/4, 0, (Math.PI / 180) * (360), false);
+					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE/3)*this.scale, ghostradius/4, 0, (Math.PI / 180) * (360), false);
 					spriteContext.fill();
 					spriteContext.closePath();
 					
@@ -1019,28 +1019,22 @@ function View(model,controller){
 					spriteContext.beginPath();
 					spriteContext.fillStyle = "#000000";
 					var eyesSize=ghostradius/6;
-					switch(directions[di]){
-						case NONE:
-							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, eyesSize, 0, (Math.PI / 180) * (360), false);
-							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, eyesSize, 0, (Math.PI / 180) * (360), false);
-							break;
-						case LEFT:
-							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3-ghostradius/8, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, eyesSize, 0, (Math.PI / 180) * (360), false);
-							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3-ghostradius/8, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, eyesSize, 0, (Math.PI / 180) * (360), false);
-							break;
-						case RIGHT:
-							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3+ghostradius/8, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, eyesSize, 0, (Math.PI / 180) * (360), false);
-							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3+ghostradius/8, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, eyesSize, 0, (Math.PI / 180) * (360), false);
-							break;
-						case UP:
-							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale-ghostradius/8, eyesSize, 0, (Math.PI / 180) * (360), false);
-							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale-ghostradius/8, eyesSize, 0, (Math.PI / 180) * (360), false);
-							break;
-						case DOWN:
-							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale+ghostradius/8, eyesSize, 0, (Math.PI / 180) * (360), false);
-							spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale+ghostradius/8, eyesSize, 0, (Math.PI / 180) * (360), false);
-							break;
-					}	
+                    if (directions[di] == NONE) {
+                        spriteContext.arc((x * ACTOR_SIZE + ACTOR_SIZE / 2) * this.scale - ghostradius / 3, (y * ACTOR_SIZE + ACTOR_SIZE/3) * this.scale, eyesSize, 0, (Math.PI / 180) * (360), false);
+                        spriteContext.arc((x * ACTOR_SIZE + ACTOR_SIZE / 2) * this.scale + ghostradius / 3, (y * ACTOR_SIZE + ACTOR_SIZE/3) * this.scale, eyesSize, 0, (Math.PI / 180) * (360), false);
+                    } else if (directions[di] == LEFT) {
+                        spriteContext.arc((x * ACTOR_SIZE + ACTOR_SIZE / 2) * this.scale - ghostradius / 3 - ghostradius / 8, (y * ACTOR_SIZE + ACTOR_SIZE/3) * this.scale, eyesSize, 0, (Math.PI / 180) * (360), false);
+                        spriteContext.arc((x * ACTOR_SIZE + ACTOR_SIZE / 2) * this.scale + ghostradius / 3 - ghostradius / 8, (y * ACTOR_SIZE + ACTOR_SIZE/3) * this.scale, eyesSize, 0, (Math.PI / 180) * (360), false);
+                    } else if (directions[di] == RIGHT) {
+                        spriteContext.arc((x * ACTOR_SIZE + ACTOR_SIZE / 2) * this.scale - ghostradius / 3 + ghostradius / 8, (y * ACTOR_SIZE + ACTOR_SIZE/3) * this.scale, eyesSize, 0, (Math.PI / 180) * (360), false);
+                        spriteContext.arc((x * ACTOR_SIZE + ACTOR_SIZE / 2) * this.scale + ghostradius / 3 + ghostradius / 8, (y * ACTOR_SIZE + ACTOR_SIZE/3) * this.scale, eyesSize, 0, (Math.PI / 180) * (360), false);
+                    } else if (directions[di] == UP) {
+                        spriteContext.arc((x * ACTOR_SIZE + ACTOR_SIZE / 2) * this.scale - ghostradius / 3, (y * ACTOR_SIZE + ACTOR_SIZE/3) * this.scale - ghostradius / 8, eyesSize, 0, (Math.PI / 180) * (360), false);
+                        spriteContext.arc((x * ACTOR_SIZE + ACTOR_SIZE / 2) * this.scale + ghostradius / 3, (y * ACTOR_SIZE + ACTOR_SIZE/3) * this.scale - ghostradius / 8, eyesSize, 0, (Math.PI / 180) * (360), false);
+                    } else if (directions[di] == DOWN) {
+                        spriteContext.arc((x * ACTOR_SIZE + ACTOR_SIZE / 2) * this.scale - ghostradius / 3, (y * ACTOR_SIZE + ACTOR_SIZE/3) * this.scale + ghostradius / 8, eyesSize, 0, (Math.PI / 180) * (360), false);
+                        spriteContext.arc((x * ACTOR_SIZE + ACTOR_SIZE / 2) * this.scale + ghostradius / 3, (y * ACTOR_SIZE + ACTOR_SIZE/3) * this.scale + ghostradius / 8, eyesSize, 0, (Math.PI / 180) * (360), false);
+                    }	
 					spriteContext.fill();
 					spriteContext.closePath();
 					
@@ -1101,20 +1095,20 @@ function View(model,controller){
 			//EYES
 			spriteContext.beginPath();
 			spriteContext.fillStyle = "#FFFFFF";
-			spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/4, 0, (Math.PI / 180) * (360), false);
-			spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/4, 0, (Math.PI / 180) * (360), false);
+			spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE/3)*this.scale, ghostradius/4, 0, (Math.PI / 180) * (360), false);
+			spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE/3)*this.scale, ghostradius/4, 0, (Math.PI / 180) * (360), false);
 			spriteContext.fill();
 			spriteContext.closePath();
 			spriteContext.beginPath();
 			spriteContext.fillStyle = "#000000";
 			switch(ghostSpriteAnims[ai]){
 				case ANIM1:
-					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/8, 0, (Math.PI / 180) * (360), false);
-					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/8, 0, (Math.PI / 180) * (360), false);
+					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE/3)*this.scale, ghostradius/8, 0, (Math.PI / 180) * (360), false);
+					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE/3)*this.scale, ghostradius/8, 0, (Math.PI / 180) * (360), false);
 					break;
 				case ANIM2:
-					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/12, 0, (Math.PI / 180) * (360), false);
-					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/12, 0, (Math.PI / 180) * (360), false);
+					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE/3)*this.scale, ghostradius/12, 0, (Math.PI / 180) * (360), false);
+					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/3, (y*ACTOR_SIZE+ACTOR_SIZE/3)*this.scale, ghostradius/12, 0, (Math.PI / 180) * (360), false);
 					break;
 			}			
 			spriteContext.fill();
@@ -1211,20 +1205,20 @@ function View(model,controller){
 			//EYES
 			spriteContext.beginPath();
 			spriteContext.fillStyle = "#FFFFFF";
-			spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/5, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/3, 0, (Math.PI / 180) * (360), false);
-			spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/5, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/3, 0, (Math.PI / 180) * (360), false);
+			spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/5, (y*ACTOR_SIZE+ACTOR_SIZE/3)*this.scale, ghostradius/3, 0, (Math.PI / 180) * (360), false);
+			spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/5, (y*ACTOR_SIZE+ACTOR_SIZE/3)*this.scale, ghostradius/3, 0, (Math.PI / 180) * (360), false);
 			spriteContext.fill();
 			spriteContext.closePath();
 			spriteContext.beginPath();
 			spriteContext.fillStyle = "#000000";
 			switch(ghostSpriteAnims[ai]){
 				case ANIM1:
-					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/5, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/8, 0, (Math.PI / 180) * (360), false);
-					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/5, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/8, 0, (Math.PI / 180) * (360), false);
+					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/5, (y*ACTOR_SIZE+ACTOR_SIZE/3)*this.scale, ghostradius/8, 0, (Math.PI / 180) * (360), false);
+					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/5, (y*ACTOR_SIZE+ACTOR_SIZE/3)*this.scale, ghostradius/8, 0, (Math.PI / 180) * (360), false);
 					break;
 				case ANIM2:
-					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/5, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/12, 0, (Math.PI / 180) * (360), false);
-					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/5, (y*ACTOR_SIZE+ACTOR_SIZE*1/3)*this.scale, ghostradius/12, 0, (Math.PI / 180) * (360), false);
+					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale-ghostradius/5, (y*ACTOR_SIZE+ACTOR_SIZE/3)*this.scale, ghostradius/12, 0, (Math.PI / 180) * (360), false);
+					spriteContext.arc((x*ACTOR_SIZE+ACTOR_SIZE/2)*this.scale+ghostradius/5, (y*ACTOR_SIZE+ACTOR_SIZE/3)*this.scale, ghostradius/12, 0, (Math.PI / 180) * (360), false);
 					break;
 			}			
 			spriteContext.fill();
